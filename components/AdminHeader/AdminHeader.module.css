@@ -1,0 +1,24 @@
+.bar {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.signedInAs {
+  color: var(--fg-muted);
+  font-size: 0.85rem;
+}
+
+.signOutButton {
+  all: unset;
+  cursor: pointer;
+  color: var(--fg-muted);
+  font-size: 0.85rem;
+  text-decoration: underline;
+}
+
+.signOutButton:hover {
+  color: var(--fg);
+}

@@ -88,6 +88,14 @@
   font-size: 1.05rem;
 }
 
+.saveStatus {
+  color: var(--fg-muted);
+  font-size: 0.9rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
 .primaryButton {
   align-self: flex-start;
   background-color: var(--accent);
