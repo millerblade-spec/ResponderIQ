@@ -29,14 +29,53 @@ Scenarios live in [`lib/scenarios`](lib/scenarios); UI lives in
 
 ## Getting started
 
-Install dependencies and start the dev server:
+1. **Install dependencies**
+   ```bash
+   npm install
+   ```
 
-```bash
-npm install
-npm run dev
-```
+2. **Start or connect to Postgres.** Any standard Postgres works. To run one
+   locally on Ubuntu/Debian:
+   ```bash
+   apt-get install -y postgresql
+   service postgresql start
+   su postgres -c "psql -c \"CREATE USER responderiq WITH PASSWORD 'localdevonly' CREATEDB;\""
+   su postgres -c "psql -c \"CREATE DATABASE responderiq OWNER responderiq;\""
+   ```
 
-Open [http://localhost:3000](http://localhost:3000) to see the app.
+3. **Copy `.env.example` to `.env.local`** and fill in `DATABASE_URL` and
+   `SESSION_SECRET` (see `.env.example` for what each one does and how to
+   generate a secret).
+
+4. **Apply the schema:**
+   ```bash
+   npm run db:migrate
+   ```
+   Safe to re-run at any time -- every statement is `CREATE TABLE IF NOT EXISTS`.
+
+5. **Create the first admin account:**
+   ```bash
+   ADMIN_USERNAME=youradminname ADMIN_PASSWORD=a-real-password-12-chars-plus npm run db:seed-admin
+   ```
+   Also safe to re-run: if the username already exists, this resets its
+   password instead of failing.
+
+6. **Start the app:**
+   ```bash
+   npm run dev
+   ```
+   Open [http://localhost:3000](http://localhost:3000). The admin review
+   area lives under `/admin/scenarios/bls-01`, gated by the account you
+   just created at `/admin/login`.
+
+7. **Run tests:**
+   ```bash
+   npm test
+   ```
+   Tests that touch the database use `TEST_DATABASE_URL` if set, otherwise
+   default to `postgres://responderiq:localdevonly@localhost:5432/responderiq_test`
+   (a second database, kept separate from your dev data -- create it the
+   same way as step 2, substituting the database name).
 
 ## Scripts
 
@@ -48,13 +87,19 @@ Open [http://localhost:3000](http://localhost:3000) to see the app.
 | `npm test` | Run the test suite (Vitest) |
 | `npm run lint` | Lint with ESLint |
 | `npm run typecheck` | Type-check with `tsc --noEmit` |
+| `npm run db:migrate` | Apply `lib/db/schema.sql` (safe to re-run) |
+| `npm run db:seed-admin` | Create or reset the one admin account (`ADMIN_USERNAME`/`ADMIN_PASSWORD` env vars) |
 
 ## Project layout
 
 ```
-app/            Next.js routes (home, scenarios, admin review)
-components/     Reusable UI (Button, Card, SimulatorPlayer, AdminReview)
+app/            Next.js routes (home, dashboard, settings, scenarios, admin)
+components/     Reusable UI (Button, Card, SimulatorPlayer, AdminReview, AdminReviewList, LoginForm, Dashboard, Settings)
 lib/engine/     Simulation engine — clock, reducer, scoring, debrief
 lib/scenarios/  Scenario definitions (BLS-01)
+lib/auth/       Password hashing, signed sessions, the DAL session check
+lib/db/         Postgres connection, schema, admin_users and review_records data access
+lib/review/     Save-request validation (zod) and the save Server Action
+scripts/        One-off CLI scripts (db:migrate, db:seed-admin)
 docs/           Design notes and archived specs
 ```

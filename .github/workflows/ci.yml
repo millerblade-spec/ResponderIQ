@@ -1,0 +1,61 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    # Ephemeral Postgres for the integration suites. Credentials and
+    # database name match the default TEST_DATABASE_URL the DB tests
+    # fall back to (see lib/db/*.test.ts), so no per-test config is
+    # needed. This container is created fresh for every run and thrown
+    # away after -- it never touches any real data.
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: responderiq
+          POSTGRES_PASSWORD: localdevonly
+          POSTGRES_DB: responderiq_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U responderiq -d responderiq_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      # Both the migration step and the app code read DATABASE_URL. The
+      # tests additionally stub it from TEST_DATABASE_URL; keeping them
+      # identical here means "what CI migrates" and "what the tests hit"
+      # are guaranteed to be the same database.
+      DATABASE_URL: postgres://responderiq:localdevonly@localhost:5432/responderiq_test
+      TEST_DATABASE_URL: postgres://responderiq:localdevonly@localhost:5432/responderiq_test
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Apply database schema
+        run: npm run db:migrate
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Test
+        run: npm test

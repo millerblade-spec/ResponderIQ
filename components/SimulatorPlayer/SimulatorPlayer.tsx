@@ -1,10 +1,12 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, useTransition } from 'react';
 import { bls01, getSceneNarrative } from '@/lib/scenarios/bls-01';
 import { applyAction, acknowledge, getAvailableActions } from '@/lib/engine/reducer';
 import { acknowledgeCriticalFlag, allCriticalFlagsAcknowledged } from '@/lib/engine/scoring';
 import { buildDebrief } from '@/lib/engine/debrief';
+import { saveCompletedRun } from '@/lib/review/actions';
+import { toReviewablePayload } from '@/lib/review/toReviewablePayload';
 import type { SceneState } from '@/lib/engine/types';
 import styles from './SimulatorPlayer.module.css';
 
@@ -18,22 +20,56 @@ const RESOURCE_LABELS = {
 
 export function SimulatorPlayer() {
   const [state, setState] = useState<SceneState>(() => bls01.buildInitialState());
+  const [saveResult, setSaveResult] = useState<'unset' | 'success' | 'failure'>('unset');
+  const [isPending, startTransition] = useTransition();
 
   const missionComplete = bls01.isComplete(state);
   const fullyClosed = missionComplete && allCriticalFlagsAcknowledged(state);
 
-  // Once the mission is fully closed (complete and every critical flag acknowledged),
-  // save the playthrough to this browser's local storage for the local administrator
-  // view. This is local-only: nothing is sent anywhere, and it isn't tied to any
-  // account or device other than this one.
+  // Generated exactly once -- the render where fullyClosed first becomes
+  // true is the same render this memo recomputes on, and it never
+  // recomputes again afterward since fullyClosed doesn't revert to
+  // false. This is what makes a retry reuse the same id rather than
+  // creating a new database row per attempt.
+  const evaluationId = useMemo(() => (fullyClosed ? crypto.randomUUID() : null), [fullyClosed]);
+
+  const runSave = useCallback(
+    (id: string, currentState: SceneState) => {
+      startTransition(async () => {
+        try {
+          const result = await saveCompletedRun({
+            evaluationId: id,
+            scenarioId: bls01.id,
+            state: toReviewablePayload(currentState),
+          });
+          setSaveResult(result.status === 'saved' || result.status === 'already_saved' ? 'success' : 'failure');
+        } catch {
+          setSaveResult('failure');
+        }
+      });
+    },
+    [startTransition],
+  );
+
+  // Once the mission is fully closed (complete and every critical flag
+  // acknowledged): keep a same-browser local recovery copy (unchanged
+  // from before) and make the first real save attempt. state is a
+  // genuine dependency here, but in practice it stops changing once
+  // fullyClosed is true (no further setState calls touch it from this
+  // point on), so this does not re-fire on every render.
   useEffect(() => {
-    if (!fullyClosed) return;
+    if (!fullyClosed || !evaluationId) return;
     try {
       window.localStorage.setItem(LOCAL_ADMIN_REVIEW_STORAGE_KEY, JSON.stringify(state));
     } catch {
       // Storage can fail (private browsing, quota). The learner experience doesn't depend on it.
     }
-  }, [fullyClosed, state]);
+    runSave(evaluationId, state);
+  }, [fullyClosed, evaluationId, state, runSave]);
+
+  function handleRetry() {
+    if (evaluationId) runSave(evaluationId, state);
+  }
 
   if (missionComplete) {
     const unacknowledged = state.criticalFlags.filter((flag) => !flag.acknowledged);
@@ -79,6 +115,16 @@ export function SimulatorPlayer() {
                 {debrief.missedOpportunities.map((s, i) => <li key={i}>{s}</li>)}
               </ul>
             </>
+          )}
+          {isPending && <p className={styles.saveStatus}>Saving your results\u2026</p>}
+          {!isPending && saveResult === 'success' && <p className={styles.saveStatus}>Results saved.</p>}
+          {!isPending && saveResult === 'failure' && (
+            <div className={styles.saveStatus}>
+              <p>Your results were not saved. You can try again.</p>
+              <button className={styles.primaryButton} onClick={handleRetry}>
+                Retry save
+              </button>
+            </div>
           )}
         </div>
       </main>

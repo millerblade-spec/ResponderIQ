@@ -1,77 +1,85 @@
-'use client';
-
-import { useCallback, useRef, useSyncExternalStore } from 'react';
+import { z } from 'zod';
 import { bls01 } from '@/lib/scenarios/bls-01';
 import { computeHiddenSummary } from '@/lib/engine/scoring';
 import { buildDebrief } from '@/lib/engine/debrief';
-import { LOCAL_ADMIN_REVIEW_STORAGE_KEY } from '@/components/SimulatorPlayer/SimulatorPlayer';
+import { getReviewRecord } from '@/lib/db/reviewRecords';
+import type { ReviewableSceneState } from '@/lib/review/schema';
 import type { SceneState } from '@/lib/engine/types';
 import styles from './AdminReview.module.css';
 
-function subscribeToStorage(callback: () => void) {
-  window.addEventListener('storage', callback);
-  return () => window.removeEventListener('storage', callback);
+const uuidSchema = z.string().uuid();
+
+interface AdminReviewProps {
+  readonly evaluationId: string;
 }
 
-function getServerSnapshot(): SceneState | null {
-  return null; // no localStorage during server rendering
-}
+/**
+ * Reads one saved review record from Postgres by evaluationId. A plain
+ * async Server Component, not a Client Component -- there's no reactive
+ * browser API to subscribe to anymore (that was localStorage's job);
+ * this is a per-request server fetch, the same as any other page data.
+ */
+export async function AdminReview({ evaluationId }: AdminReviewProps) {
+  if (!uuidSchema.safeParse(evaluationId).success) {
+    return (
+      <main className={styles.wrap}>
+        <Disclaimer />
+        <p>This review id isn&apos;t valid.</p>
+      </main>
+    );
+  }
 
-export function AdminReview() {
-  // window.localStorage only exists in the browser, and its contents can in
-  // principle change outside of React (another tab, manual clearing). That
-  // makes this an external-store read, which is exactly what
-  // useSyncExternalStore is for — it's the correct way to do this without
-  // ever calling setState inside an effect. The cache below keeps the
-  // returned snapshot referentially stable when the underlying value hasn't
-  // actually changed, which useSyncExternalStore requires to avoid looping.
-  const cacheRef = useRef<{ raw: string | null; parsed: SceneState | null }>({
-    raw: undefined as unknown as string | null,
-    parsed: null,
-  });
-  const getSnapshot = useCallback((): SceneState | null => {
-    const raw = window.localStorage.getItem(LOCAL_ADMIN_REVIEW_STORAGE_KEY);
-    if (raw === cacheRef.current.raw) return cacheRef.current.parsed;
-    let parsed: SceneState | null = null;
-    try {
-      parsed = raw ? (JSON.parse(raw) as SceneState) : null;
-    } catch {
-      parsed = null;
-    }
-    cacheRef.current = { raw, parsed };
-    return parsed;
-  }, []);
-
-  const state = useSyncExternalStore(subscribeToStorage, getSnapshot, getServerSnapshot);
+  let record;
+  try {
+    record = await getReviewRecord(evaluationId);
+  } catch (error) {
+    // Real cause stays server-side only -- never forwarded to the page.
+    console.error('Failed to load review record:', error);
+    return (
+      <main className={styles.wrap}>
+        <Disclaimer />
+        <p>Something went wrong loading this review. Please try again.</p>
+      </main>
+    );
+  }
 
   return (
     <main className={styles.wrap}>
-      <div className={styles.disclaimer}>
-        <h1>Local Administrator Review</h1>
-        <p>
-          This shows only the most recently completed BLS-01 playthrough saved in this browser.
-          It is not authenticated, not secure, and not linked to any account. It is not multi-user
-          or multi-device, and nothing here is permanently stored — clearing this browser&apos;s
-          storage removes it. Database-backed instructor review, across devices and learners, is a
-          future requirement, not part of this build.
-        </p>
-      </div>
-
-      {state === null && <p>No completed BLS-01 playthrough found in this browser yet.</p>}
-      {state !== null && <ReviewContent state={state} />}
+      <Disclaimer />
+      {record === null && <p>No review record found for this id.</p>}
+      {record !== null && <ReviewContent state={record.state} savedAt={record.savedAt} />}
     </main>
   );
 }
 
-function ReviewContent({ state }: { readonly state: SceneState }) {
-  const summary = computeHiddenSummary(state, bls01);
-  const debrief = buildDebrief(state);
+function Disclaimer() {
+  return (
+    <div className={styles.disclaimer}>
+      <h1>Administrator Review</h1>
+      <p>
+        Backed by the database \u2014 any signed-in administrator can see this from any browser or
+        device, not just the one the run was completed on.
+      </p>
+    </div>
+  );
+}
+
+function ReviewContent({ state, savedAt }: { readonly state: ReviewableSceneState; readonly savedAt: string }) {
+  // computeHiddenSummary/buildDebrief are typed against the full, live
+  // SceneState (which includes dynamicEvents), but neither actually
+  // reads that field -- it's scheduling state for gameplay still in
+  // progress, irrelevant to scoring a finished run. Supplying an empty
+  // one here is a safe local bridge, not a change to those functions.
+  const fullState: SceneState = { ...state, dynamicEvents: [] };
+  const summary = computeHiddenSummary(fullState, bls01);
+  const debrief = buildDebrief(fullState);
 
   return (
     <>
       <section className={styles.section}>
         <h2>Completion</h2>
         <p>Status: {state.completion?.status ?? 'not completed'} at minute {state.completion?.atMinute ?? '\u2014'}</p>
+        <p className={styles.hint}>Saved {new Date(savedAt).toLocaleString()}</p>
       </section>
 
       <section className={styles.section}>
