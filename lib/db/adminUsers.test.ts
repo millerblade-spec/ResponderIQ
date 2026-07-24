@@ -4,8 +4,10 @@ import { findAdminByUsername, createAdminUser } from './adminUsers';
 
 // Requires a real Postgres reachable at TEST_DATABASE_URL (defaults to
 // the local dev instance's *_test database). These are integration
-// tests against genuine SQL, not mocks -- skipped automatically (see
-// vitest.config) if no test database is reachable in a given environment.
+// tests against genuine SQL, not mocks. They do NOT skip when no
+// database is reachable -- they fail with a connection error. Run them
+// against a live Postgres (CI provides one; see .github/workflows/ci.yml)
+// or point TEST_DATABASE_URL at your own.
 const TEST_DATABASE_URL =
   process.env.TEST_DATABASE_URL ?? 'postgres://responderiq:localdevonly@localhost:5432/responderiq_test';
 
