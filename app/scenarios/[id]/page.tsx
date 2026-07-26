@@ -5,7 +5,7 @@ import { PROVISIONAL_LEARNER_ID } from '@/lib/opsim/constants';
 
 interface ScenarioPageProps {
   readonly params: Promise<{ id: string }>;
-  readonly searchParams: Promise<{ level?: string; learner?: string; shift?: string; scene?: string }>;
+  readonly searchParams: Promise<{ level?: string; learner?: string; shift?: string; scene?: string; call?: string }>;
 }
 
 /**
@@ -19,7 +19,7 @@ interface ScenarioPageProps {
  */
 export default async function ScenarioPage({ params, searchParams }: ScenarioPageProps) {
   const { id } = await params;
-  const { level, learner, shift, scene } = await searchParams;
+  const { level, learner, shift, scene, call } = await searchParams;
 
   if (id !== 'bls-01') {
     notFound();
@@ -44,6 +44,7 @@ export default async function ScenarioPage({ params, searchParams }: ScenarioPag
     isFirstShift = false;
   }
   const sceneVariant = demo && scene === 'security' ? 'security' : 'normal';
+  const callType = demo && call === 'mvc' ? 'mvc_two_vehicle' : 'ems';
 
   return (
     <ScenarioRunner
@@ -52,6 +53,7 @@ export default async function ScenarioPage({ params, searchParams }: ScenarioPag
       isFirstShift={isFirstShift}
       learnerId={learnerId}
       sceneVariant={sceneVariant}
+      callType={callType}
     />
   );
 }

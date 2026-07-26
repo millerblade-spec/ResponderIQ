@@ -13,6 +13,8 @@ interface ScenarioRunnerProps {
   readonly learnerId: string;
   /** 'security' selects the staging/weapons-threat variant (demo/screenshots). */
   readonly sceneVariant?: 'normal' | 'security';
+  /** Fire response type — 'mvc_two_vehicle' brings two engines (demo/screenshots). */
+  readonly callType?: 'ems' | 'mvc_two_vehicle';
 }
 
 /**
@@ -25,6 +27,7 @@ export function ScenarioRunner({
   isFirstShift,
   learnerId,
   sceneVariant = 'normal',
+  callType = 'ems',
 }: ScenarioRunnerProps) {
   const [available, setAvailable] = useState(false);
 
@@ -40,5 +43,5 @@ export function ScenarioRunner({
   }
 
   const scene = sceneVariant === 'security' ? bls01SecurityScene : bls01Scene;
-  return <OperationalSim scenarioId={scenarioId} level={level} scene={scene} />;
+  return <OperationalSim scenarioId={scenarioId} level={level} scene={scene} callType={callType} />;
 }

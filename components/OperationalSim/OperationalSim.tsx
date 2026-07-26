@@ -1,13 +1,15 @@
 'use client';
 
-import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { DEFAULT_SIMULATOR_CONFIG, type SimulatorConfig } from '@/lib/engine/config';
 import { MissionClock, startTicking, systemTimeSource } from '@/lib/engine/missionClock';
 import { EQUIPMENT_CATALOG, equipmentLabel } from '@/lib/opsim/equipment';
 import { differentialTimerSeconds } from '@/lib/opsim/difficulty';
 import { bls01Dispatch, bls01Differentials, bls01Scene } from '@/lib/scenarios/bls-01.dispatch';
 import type { SceneConfig } from '@/lib/opsim/scene';
+import { fireResponseFor, type CallType } from '@/lib/opsim/crew';
 import { SceneSafety } from './SceneSafety';
+import { CrewOps } from './CrewOps';
 import {
   createInitialOpSimState,
   completeTone,
@@ -39,6 +41,7 @@ interface OperationalSimProps {
   readonly dispatch?: DispatchInfo;
   readonly choices?: readonly DifferentialChoice[];
   readonly scene?: SceneConfig;
+  readonly callType?: CallType;
   /** Injectable for tests; defaults to a real system-clock-backed MissionClock. */
   readonly clock?: MissionClock;
   /** Whether to drive the clock from a real interval. Tests pass false and tick manually. */
@@ -62,6 +65,7 @@ export function OperationalSim({
   dispatch = bls01Dispatch,
   choices = bls01Differentials,
   scene = bls01Scene,
+  callType = 'ems',
   clock,
   ticking = true,
   lightingMode,
@@ -76,6 +80,8 @@ export function OperationalSim({
 
   const timerSeconds = differentialTimerSeconds(level, config);
   const toneSeconds = config.timing.dispatchToneSeconds;
+  // Stable across renders so CrewOps's scheduling effect doesn't re-run each tick.
+  const engines = useMemo(() => fireResponseFor(callType), [callType]);
 
   // Reduced Flashing Mode (§3): explicit prop wins, otherwise the stored
   // setting, read via the same external-store pattern used elsewhere so there
@@ -206,6 +212,9 @@ export function OperationalSim({
         )}
 
         {state.stage === 'ready' && <SceneSafety config={scene} clock={activeClock} />}
+        {state.stage === 'ready' && (
+          <CrewOps engines={engines} equipmentOnScene={state.equipment.selected} clock={activeClock} />
+        )}
       </div>
 
       {state.differential.open && (
