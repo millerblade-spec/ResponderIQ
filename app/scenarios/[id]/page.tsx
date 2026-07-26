@@ -5,7 +5,7 @@ import { PROVISIONAL_LEARNER_ID } from '@/lib/opsim/constants';
 
 interface ScenarioPageProps {
   readonly params: Promise<{ id: string }>;
-  readonly searchParams: Promise<{ level?: string; learner?: string; shift?: string }>;
+  readonly searchParams: Promise<{ level?: string; learner?: string; shift?: string; scene?: string }>;
 }
 
 /**
@@ -19,7 +19,7 @@ interface ScenarioPageProps {
  */
 export default async function ScenarioPage({ params, searchParams }: ScenarioPageProps) {
   const { id } = await params;
-  const { level, learner, shift } = await searchParams;
+  const { level, learner, shift, scene } = await searchParams;
 
   if (id !== 'bls-01') {
     notFound();
@@ -39,9 +39,11 @@ export default async function ScenarioPage({ params, searchParams }: ScenarioPag
   // Screenshot/demo-only affordance for exercising the later-shift path without
   // a database. Off unless ALLOW_DEMO_SHIFT=1 is set in the environment, so it
   // can never change behavior in a normal deployment.
-  if (process.env.ALLOW_DEMO_SHIFT === '1' && shift === 'later') {
+  const demo = process.env.ALLOW_DEMO_SHIFT === '1';
+  if (demo && shift === 'later') {
     isFirstShift = false;
   }
+  const sceneVariant = demo && scene === 'security' ? 'security' : 'normal';
 
   return (
     <ScenarioRunner
@@ -49,6 +51,7 @@ export default async function ScenarioPage({ params, searchParams }: ScenarioPag
       level={level === 'advanced' ? 'advanced' : 'orientation'}
       isFirstShift={isFirstShift}
       learnerId={learnerId}
+      sceneVariant={sceneVariant}
     />
   );
 }

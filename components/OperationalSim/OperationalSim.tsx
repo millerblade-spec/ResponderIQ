@@ -5,7 +5,9 @@ import { DEFAULT_SIMULATOR_CONFIG, type SimulatorConfig } from '@/lib/engine/con
 import { MissionClock, startTicking, systemTimeSource } from '@/lib/engine/missionClock';
 import { EQUIPMENT_CATALOG, equipmentLabel } from '@/lib/opsim/equipment';
 import { differentialTimerSeconds } from '@/lib/opsim/difficulty';
-import { bls01Dispatch, bls01Differentials } from '@/lib/scenarios/bls-01.dispatch';
+import { bls01Dispatch, bls01Differentials, bls01Scene } from '@/lib/scenarios/bls-01.dispatch';
+import type { SceneConfig } from '@/lib/opsim/scene';
+import { SceneSafety } from './SceneSafety';
 import {
   createInitialOpSimState,
   completeTone,
@@ -36,6 +38,7 @@ interface OperationalSimProps {
   readonly level?: DifficultyLevel;
   readonly dispatch?: DispatchInfo;
   readonly choices?: readonly DifferentialChoice[];
+  readonly scene?: SceneConfig;
   /** Injectable for tests; defaults to a real system-clock-backed MissionClock. */
   readonly clock?: MissionClock;
   /** Whether to drive the clock from a real interval. Tests pass false and tick manually. */
@@ -58,6 +61,7 @@ export function OperationalSim({
   level = 'orientation',
   dispatch = bls01Dispatch,
   choices = bls01Differentials,
+  scene = bls01Scene,
   clock,
   ticking = true,
   lightingMode,
@@ -200,6 +204,8 @@ export function OperationalSim({
             </div>
           </section>
         )}
+
+        {state.stage === 'ready' && <SceneSafety config={scene} clock={activeClock} />}
       </div>
 
       {state.differential.open && (
