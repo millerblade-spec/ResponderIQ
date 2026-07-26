@@ -72,6 +72,7 @@ export const EQUIPMENT_TASKS: readonly TaskDef[] = EQUIPMENT_CATALOG.map((e) => 
 }));
 
 export const PATIENT_CARE_TASKS: readonly TaskDef[] = [
+  { id: 'initial_assessment', label: 'Initial (primary) assessment', category: 'patient_care', durationSeconds: 60, revealsClinical: true },
   { id: 'obtain_vitals', label: 'Obtain vital signs', category: 'patient_care', durationSeconds: 60, revealsClinical: true },
   { id: 'apply_monitor', label: 'Apply cardiac monitor', category: 'patient_care', durationSeconds: 45, revealsClinical: true },
   { id: 'obtain_12_lead', label: 'Obtain 12-lead ECG', category: 'patient_care', durationSeconds: 90, revealsClinical: true },

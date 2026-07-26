@@ -36,6 +36,8 @@ interface SceneSafetyProps {
   readonly config: SceneConfig;
   readonly clock: MissionClock;
   readonly simConfig?: SimulatorConfig;
+  /** Reports whether clinical actions are unlocked (windshield + safe + exit + patient contact, §19). */
+  readonly onClinicalUnlockChange?: (unlocked: boolean) => void;
 }
 
 const CATEGORY_ORDER: readonly WindshieldCategory[] = [
@@ -52,11 +54,21 @@ const CATEGORY_ORDER: readonly WindshieldCategory[] = [
  * lock. Police timing (15s + 10s) is scheduled on the shared mission clock; no
  * ad-hoc timers. Clinical actions stay locked until the gate is satisfied.
  */
-export function SceneSafety({ config, clock, simConfig = DEFAULT_SIMULATOR_CONFIG }: SceneSafetyProps) {
+export function SceneSafety({
+  config,
+  clock,
+  simConfig = DEFAULT_SIMULATOR_CONFIG,
+  onClinicalUnlockChange,
+}: SceneSafetyProps) {
   const [state, setState] = useState(() => createSceneSafetyState(config));
   const policeScheduledRef = useRef(false);
   const secureScheduledRef = useRef(false);
   const scheduledRef = useRef<number[]>([]);
+
+  // Report the clinical-lock state up so the clinical panel can gate on it (§19).
+  useEffect(() => {
+    onClinicalUnlockChange?.(clinicalUnlocked(state));
+  }, [state, onClinicalUnlockChange]);
 
   // Police arrive 15s after staging on a security scene (§16).
   useEffect(() => {

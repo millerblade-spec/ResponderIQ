@@ -15,8 +15,9 @@ import {
 } from '@/lib/scenarios/bls-01.dispatch';
 import type { SceneConfig } from '@/lib/opsim/scene';
 import type { DifficultyName } from '@/lib/opsim/dynamics';
+import { bls01Clinical } from '@/lib/opsim/clinical';
+import type { ClinicalModel } from '@/lib/opsim/clinical';
 import { fireResponseFor, type CallType } from '@/lib/opsim/crew';
-import { SceneSafety } from './SceneSafety';
 import { OnSceneOps } from './OnSceneOps';
 import {
   createInitialOpSimState,
@@ -52,6 +53,7 @@ interface OperationalSimProps {
   readonly callType?: CallType;
   readonly distractions?: readonly ScenarioDistraction[];
   readonly dynamicsDifficulty?: DifficultyName;
+  readonly clinicalModel?: ClinicalModel;
   /** Injectable for tests; defaults to a real system-clock-backed MissionClock. */
   readonly clock?: MissionClock;
   /** Whether to drive the clock from a real interval. Tests pass false and tick manually. */
@@ -78,6 +80,7 @@ export function OperationalSim({
   callType = 'ems',
   distractions = bls01Distractions,
   dynamicsDifficulty = bls01DynamicsDifficulty,
+  clinicalModel = bls01Clinical,
   clock,
   ticking = true,
   lightingMode,
@@ -223,7 +226,6 @@ export function OperationalSim({
           </section>
         )}
 
-        {state.stage === 'ready' && <SceneSafety config={scene} clock={activeClock} />}
         {state.stage === 'ready' && (
           <OnSceneOps
             engines={engines}
@@ -231,6 +233,10 @@ export function OperationalSim({
             clock={activeClock}
             difficulty={dynamicsDifficulty}
             distractions={distractions}
+            scene={scene}
+            clinicalModel={clinicalModel}
+            initialDifferential={state.differential.ranking}
+            differentialChoices={choices}
           />
         )}
       </div>

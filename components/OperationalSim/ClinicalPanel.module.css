@@ -1,0 +1,222 @@
+.section {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.85rem 1rem;
+  margin-bottom: 0.6rem;
+  background-color: var(--bg);
+}
+
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.sectionTitle {
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+
+.stateChip {
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 0.18rem 0.5rem;
+  border-radius: 999px;
+  border: 1px solid var(--fg-muted);
+  color: var(--fg-muted);
+}
+
+.stateChip.available {
+  border-color: var(--status-safe);
+  color: var(--status-safe);
+}
+.stateChip.inProgress {
+  border-color: var(--status-caution);
+  color: var(--status-caution);
+}
+.stateChip.equipment {
+  border-color: var(--status-pending);
+  color: var(--status-pending);
+}
+
+.findings {
+  margin-top: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  font-size: 0.9rem;
+}
+
+.finding {
+  display: flex;
+  flex-direction: column;
+}
+
+.findingLabel {
+  font-weight: 600;
+}
+
+.source {
+  font-size: 0.72rem;
+  color: var(--status-info);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.vitalsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 0.4rem;
+  margin-top: 0.5rem;
+}
+
+.vital {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.4rem 0.6rem;
+  font-size: 0.85rem;
+}
+
+.vitalName {
+  color: var(--fg-muted);
+  font-size: 0.72rem;
+  display: block;
+}
+
+.vitalValue {
+  font-weight: 700;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 0.5rem;
+}
+
+.button {
+  border: 1px solid var(--border);
+  background-color: var(--surface);
+  color: var(--fg);
+  border-radius: 5px;
+  padding: 0.35rem 0.6rem;
+  font-size: 0.8rem;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.button:hover:not(:disabled) {
+  border-color: var(--status-info);
+}
+
+.button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.blocked {
+  font-size: 0.78rem;
+  color: var(--status-caution);
+  margin-top: 0.3rem;
+}
+
+.picker {
+  margin-top: 0.4rem;
+  border: 1px dashed var(--status-info);
+  border-radius: 6px;
+  padding: 0.5rem;
+}
+
+.eta {
+  color: var(--status-caution);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.deterioration {
+  border-left: 3px solid var(--status-critical);
+  padding: 0.5rem 0.7rem;
+  background-color: color-mix(in srgb, var(--status-critical) 8%, transparent);
+  color: var(--status-critical);
+  font-weight: 600;
+  font-size: 0.85rem;
+  margin-top: 0.5rem;
+}
+
+.diffList {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-top: 0.5rem;
+}
+
+.diffRow {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.4rem 0.55rem;
+  font-size: 0.85rem;
+}
+
+.diffRow.lessLikely {
+  opacity: 0.6;
+  text-decoration: line-through;
+}
+
+.diffRow.impression {
+  border-color: var(--status-info);
+}
+
+.diffNum {
+  width: 1.4rem;
+  height: 1.4rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 5px;
+  font-weight: 700;
+  font-size: 0.78rem;
+  background-color: color-mix(in srgb, var(--status-info) 16%, transparent);
+  color: var(--status-info);
+}
+
+.diffLabel {
+  flex: 1;
+}
+
+.diffButtons {
+  display: inline-flex;
+  gap: 0.2rem;
+}
+
+.iconBtn {
+  width: 1.7rem;
+  height: 1.7rem;
+  border: 1px solid var(--border);
+  background-color: var(--surface);
+  color: var(--fg);
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 0.8rem;
+}
+
+.iconBtn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.lockedNote {
+  color: var(--fg-muted);
+  font-size: 0.85rem;
+}
+
+.impressionTag {
+  font-size: 0.7rem;
+  color: var(--status-info);
+  font-weight: 700;
+}
