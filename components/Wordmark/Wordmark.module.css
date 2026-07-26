@@ -1,0 +1,21 @@
+.plate {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0;
+  padding: 0.35em 0.6em;
+  border-radius: 8px;
+  background-color: var(--brand-plate-bg);
+  border: 1px solid var(--brand-plate-border);
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  line-height: 1;
+}
+
+.responder {
+  /* color applied inline (var(--brand-responder)) so it is always white */
+}
+
+.iq {
+  /* color applied inline (var(--brand-iq)) so it is always crimson orange */
+  font-weight: 800;
+}

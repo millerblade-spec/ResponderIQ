@@ -11,6 +11,8 @@ describe('Settings', () => {
 
   afterEach(() => {
     delete document.documentElement.dataset.reducedMotion;
+    delete document.documentElement.dataset.theme;
+    delete document.documentElement.dataset.lighting;
   });
 
   it('renders reduced motion unchecked by default', () => {
@@ -30,7 +32,45 @@ describe('Settings', () => {
 
     expect(screen.getByRole('checkbox', { name: /reduce motion/i })).toBeChecked();
     expect(document.documentElement.dataset.reducedMotion).toBe('true');
-    expect(JSON.parse(window.localStorage.getItem(SETTINGS_STORAGE_KEY) ?? '')).toEqual({ reducedMotion: true });
+    expect(JSON.parse(window.localStorage.getItem(SETTINGS_STORAGE_KEY) ?? '')).toEqual({
+      reducedMotion: true,
+      theme: 'system',
+      lightingMode: 'standard',
+    });
+  });
+
+  it('changes theme to dark, persists it, and applies it to the document immediately', () => {
+    render(<Settings />);
+    fireEvent.change(screen.getByLabelText('Theme'), { target: { value: 'dark' } });
+
+    expect(document.documentElement.dataset.theme).toBe('dark');
+    expect(JSON.parse(window.localStorage.getItem(SETTINGS_STORAGE_KEY) ?? '')).toEqual({
+      reducedMotion: false,
+      theme: 'dark',
+      lightingMode: 'standard',
+    });
+  });
+
+  it('changes emergency lighting to Reduced Flashing Mode and persists it', () => {
+    render(<Settings />);
+    fireEvent.change(screen.getByLabelText('Emergency lighting'), { target: { value: 'reduced' } });
+
+    expect(document.documentElement.dataset.lighting).toBe('reduced');
+    expect(JSON.parse(window.localStorage.getItem(SETTINGS_STORAGE_KEY) ?? '')).toEqual({
+      reducedMotion: false,
+      theme: 'system',
+      lightingMode: 'reduced',
+    });
+  });
+
+  it('reflects an already-stored theme and lighting preference', () => {
+    window.localStorage.setItem(
+      SETTINGS_STORAGE_KEY,
+      JSON.stringify({ reducedMotion: false, theme: 'light', lightingMode: 'reduced' }),
+    );
+    render(<Settings />);
+    expect(screen.getByLabelText('Theme')).toHaveValue('light');
+    expect(screen.getByLabelText('Emergency lighting')).toHaveValue('reduced');
   });
 
   it('shows no local review data and a disabled clear button when none is saved', () => {
