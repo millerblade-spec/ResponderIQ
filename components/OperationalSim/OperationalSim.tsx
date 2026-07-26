@@ -5,11 +5,19 @@ import { DEFAULT_SIMULATOR_CONFIG, type SimulatorConfig } from '@/lib/engine/con
 import { MissionClock, startTicking, systemTimeSource } from '@/lib/engine/missionClock';
 import { EQUIPMENT_CATALOG, equipmentLabel } from '@/lib/opsim/equipment';
 import { differentialTimerSeconds } from '@/lib/opsim/difficulty';
-import { bls01Dispatch, bls01Differentials, bls01Scene } from '@/lib/scenarios/bls-01.dispatch';
+import {
+  bls01Dispatch,
+  bls01Differentials,
+  bls01Scene,
+  bls01Distractions,
+  bls01DynamicsDifficulty,
+  type ScenarioDistraction,
+} from '@/lib/scenarios/bls-01.dispatch';
 import type { SceneConfig } from '@/lib/opsim/scene';
+import type { DifficultyName } from '@/lib/opsim/dynamics';
 import { fireResponseFor, type CallType } from '@/lib/opsim/crew';
 import { SceneSafety } from './SceneSafety';
-import { CrewOps } from './CrewOps';
+import { OnSceneOps } from './OnSceneOps';
 import {
   createInitialOpSimState,
   completeTone,
@@ -42,6 +50,8 @@ interface OperationalSimProps {
   readonly choices?: readonly DifferentialChoice[];
   readonly scene?: SceneConfig;
   readonly callType?: CallType;
+  readonly distractions?: readonly ScenarioDistraction[];
+  readonly dynamicsDifficulty?: DifficultyName;
   /** Injectable for tests; defaults to a real system-clock-backed MissionClock. */
   readonly clock?: MissionClock;
   /** Whether to drive the clock from a real interval. Tests pass false and tick manually. */
@@ -66,6 +76,8 @@ export function OperationalSim({
   choices = bls01Differentials,
   scene = bls01Scene,
   callType = 'ems',
+  distractions = bls01Distractions,
+  dynamicsDifficulty = bls01DynamicsDifficulty,
   clock,
   ticking = true,
   lightingMode,
@@ -213,7 +225,13 @@ export function OperationalSim({
 
         {state.stage === 'ready' && <SceneSafety config={scene} clock={activeClock} />}
         {state.stage === 'ready' && (
-          <CrewOps engines={engines} equipmentOnScene={state.equipment.selected} clock={activeClock} />
+          <OnSceneOps
+            engines={engines}
+            equipmentOnScene={state.equipment.selected}
+            clock={activeClock}
+            difficulty={dynamicsDifficulty}
+            distractions={distractions}
+          />
         )}
       </div>
 

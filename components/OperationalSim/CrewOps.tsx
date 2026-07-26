@@ -1,7 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
-import { DEFAULT_SIMULATOR_CONFIG, type SimulatorConfig } from '@/lib/engine/config';
+import { useState } from 'react';
 import type { MissionClock } from '@/lib/engine/missionClock';
 import {
   EQUIPMENT_TASKS,
@@ -12,32 +11,15 @@ import {
   STATUS_LABELS,
   equipmentLabelForTask,
   taskDef,
-  type Apparatus,
 } from '@/lib/opsim/crew';
-import {
-  createCrewState,
-  engineArrives,
-  assignTask,
-  beginTask,
-  completeTask,
-  cancelTask,
-  reassignTask,
-  canClearEngine,
-  clearEngine,
-  isLastFireResource,
-  requestResource,
-  type CrewState,
-  type ResponderRuntime,
-} from '@/lib/opsim/crewMachine';
+import type { CrewController } from './useCrew';
+import type { ResponderRuntime } from '@/lib/opsim/crewMachine';
 import opStyles from './OperationalSim.module.css';
 import styles from './CrewOps.module.css';
 
 interface CrewOpsProps {
-  readonly engines: readonly Apparatus[];
-  readonly equipmentOnScene: readonly string[];
+  readonly controller: CrewController;
   readonly clock: MissionClock;
-  readonly arrivalDelaySeconds?: number;
-  readonly simConfig?: SimulatorConfig;
 }
 
 const TASK_GROUPS = [
@@ -52,82 +34,47 @@ function fmt(total: number): string {
   return `${m}:${s.toString().padStart(2, '0')}`;
 }
 
+function rejectionMessage(reason: string, taskId: string): string {
+  switch (reason) {
+    case 'busy':
+      return 'That responder already has an active task.';
+    case 'cleared':
+      return 'That responder has been cleared from the call.';
+    case 'safety':
+      return 'The fire officer won’t send the crew through an uncontrolled hazard.';
+    case 'already_on_scene':
+      return `${equipmentLabelForTask(taskId)} is already available on scene.`;
+    default:
+      return 'That assignment isn’t available.';
+  }
+}
+
 /**
- * Crew-resource management (§10–§14): roster, task assignment, 45s equipment
- * retrieval, Clear Engine from Call, and resource requests. Engine arrival and
- * the 5s fire-officer prompt, plus task/retrieval completion, are scheduled on
- * the shared mission clock — no ad-hoc component timers.
+ * Crew-resource management panel (§10–§14). Presentational: it reads and mutates
+ * the shared crew via the CrewController, so Scene Dynamics and this panel act
+ * on the same personnel.
  */
-export function CrewOps({
-  engines,
-  equipmentOnScene,
-  clock,
-  arrivalDelaySeconds = 5,
-  simConfig = DEFAULT_SIMULATOR_CONFIG,
-}: CrewOpsProps) {
-  const [crew, setCrew] = useState<CrewState>(() => createCrewState(engines, equipmentOnScene));
+export function CrewOps({ controller, clock }: CrewOpsProps) {
+  const { crew } = controller;
   const [selected, setSelected] = useState<string | null>(null);
   const [reassignFrom, setReassignFrom] = useState<string | null>(null);
-  const [ronArrived, setRonArrived] = useState(false);
-  const [officerPrompts, setOfficerPrompts] = useState<readonly string[]>([]);
   const [showResources, setShowResources] = useState(false);
   const [confirmClear, setConfirmClear] = useState<string | null>(null);
   const [blocked, setBlocked] = useState<Record<string, string>>({});
-  const scheduledRef = useRef<number[]>([]);
-
-  // Schedule each engine's arrival, and 5s after each arrival the officer prompt.
-  useEffect(() => {
-    for (const eng of engines) {
-      const arrId = clock.after(arrivalDelaySeconds, () => {
-        setCrew((s) => engineArrives(s, eng.id, clock.elapsedSeconds()));
-        setRonArrived(true);
-        const offId = clock.after(simConfig.timing.fireOfficerQuestionDelaySeconds, () =>
-          setOfficerPrompts((prev) => (prev.includes(eng.id) ? prev : [...prev, eng.id])),
-        );
-        scheduledRef.current.push(offId);
-      });
-      scheduledRef.current.push(arrId);
-    }
-    const scheduled = scheduledRef.current;
-    return () => scheduled.forEach((id) => clock.cancel(id));
-  }, [engines, clock, arrivalDelaySeconds, simConfig]);
-
-  function scheduleCompletion(responderId: string, startedAt: number, etaSecond: number) {
-    const id = clock.after(etaSecond - clock.elapsedSeconds(), () =>
-      setCrew((s) => {
-        const a = s.responders[responderId]?.assignment;
-        // Only complete if this exact assignment is still active (guards cancel/reassign).
-        if (a && a.startedAtSecond === startedAt && a.status !== 'complete') return completeTask(s, responderId);
-        return s;
-      }),
-    );
-    scheduledRef.current.push(id);
-  }
 
   function doAssign(responderId: string, taskId: string) {
-    const at = clock.elapsedSeconds();
-    const result = assignTask(crew, responderId, taskId, at, { config: simConfig });
-    if (result.rejected) {
-      setBlocked((b) => ({ ...b, [responderId]: rejectionMessage(result.rejected!, taskId) }));
+    const rejected = controller.assign(responderId, taskId);
+    if (rejected) {
+      setBlocked((b) => ({ ...b, [responderId]: rejectionMessage(rejected, taskId) }));
       return;
     }
-    const started = beginTask(result.state, responderId);
-    setCrew(started);
-    const a = started.responders[responderId].assignment;
-    if (a?.etaSecond != null) scheduleCompletion(responderId, a.startedAtSecond, a.etaSecond);
     setSelected(null);
     setBlocked((b) => ({ ...b, [responderId]: '' }));
   }
 
   function handleResponderClick(r: ResponderRuntime) {
     if (reassignFrom && reassignFrom !== r.id) {
-      const at = clock.elapsedSeconds();
-      const result = reassignTask(crew, reassignFrom, r.id, at, { config: simConfig });
-      if (!result.rejected) {
-        setCrew(result.state);
-        const a = result.state.responders[r.id].assignment;
-        if (a?.etaSecond != null) scheduleCompletion(r.id, a.startedAtSecond, a.etaSecond);
-      }
+      controller.reassign(reassignFrom, r.id);
       setReassignFrom(null);
       return;
     }
@@ -135,16 +82,16 @@ export function CrewOps({
   }
 
   function handleClearEngine(engineId: string) {
-    const elig = canClearEngine(crew, engineId);
+    const elig = controller.canClearEngine(engineId);
     if (!elig.ok) {
       setBlocked((b) => ({ ...b, [engineId]: elig.reason ?? 'Blocked.' }));
       return;
     }
-    if (isLastFireResource(crew, engineId) && confirmClear !== engineId) {
+    if (controller.isLastFireResource(engineId) && confirmClear !== engineId) {
       setConfirmClear(engineId);
       return;
     }
-    setCrew(clearEngine(crew, engineId));
+    controller.clearEngine(engineId);
     setConfirmClear(null);
     setBlocked((b) => ({ ...b, [engineId]: '' }));
   }
@@ -156,14 +103,14 @@ export function CrewOps({
     <section className={opStyles.panel} aria-label="Crew assignments">
       <h2 className={opStyles.panelTitle}>Crew &amp; task assignments</h2>
 
-      {ronArrived && (
+      {controller.ronArrived && (
         <div className={opStyles.ron}>
           <span className={opStyles.ronName}>Partner Ron:</span>
-          <span>“{RON_CREW_LINES.engineArrival}”</span>
+          <span>“{controller.ronArrivalLine}”</span>
         </div>
       )}
-      {officerPrompts.length > 0 && (
-        <p className={styles.officerLine}>Fire Officer: “{RON_CREW_LINES.officerOffer}”</p>
+      {controller.officerPrompts.length > 0 && (
+        <p className={styles.officerLine}>Fire Officer: “{controller.officerOfferLine}”</p>
       )}
 
       <p className={styles.instructionNote}>
@@ -203,9 +150,7 @@ export function CrewOps({
                 {blocked[id] && <div className={styles.blockedReason}>{blocked[id]}</div>}
               </div>
 
-              <span className={`${styles.statusPill} ${styles[`st_${r.status}`]}`}>
-                {STATUS_LABELS[r.status]}
-              </span>
+              <span className={`${styles.statusPill} ${styles[`st_${r.status}`]}`}>{STATUS_LABELS[r.status]}</span>
 
               {r.status !== 'cleared_from_call' && (
                 <span className={styles.rowButtons}>
@@ -225,7 +170,7 @@ export function CrewOps({
                         type="button"
                         className={styles.smallButton}
                         aria-label={`Cancel ${r.name}'s task`}
-                        onClick={() => setCrew(cancelTask(crew, id))}
+                        onClick={() => controller.cancel(id)}
                       >
                         Cancel
                       </button>
@@ -297,7 +242,7 @@ export function CrewOps({
                   type="button"
                   className={styles.taskButton}
                   disabled={requested}
-                  onClick={() => setCrew(requestResource(crew, res.id))}
+                  onClick={() => controller.requestResource(res.id)}
                 >
                   {requested ? `${res.label} ✓` : res.label}
                 </button>
@@ -308,19 +253,4 @@ export function CrewOps({
       </div>
     </section>
   );
-}
-
-function rejectionMessage(reason: string, taskId: string): string {
-  switch (reason) {
-    case 'busy':
-      return 'That responder already has an active task.';
-    case 'cleared':
-      return 'That responder has been cleared from the call.';
-    case 'safety':
-      return 'The fire officer won’t send the crew through an uncontrolled hazard.';
-    case 'already_on_scene':
-      return `${equipmentLabelForTask(taskId)} is already available on scene.`;
-    default:
-      return 'That assignment isn’t available.';
-  }
 }

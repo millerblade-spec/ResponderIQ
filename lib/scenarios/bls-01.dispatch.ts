@@ -1,7 +1,32 @@
 import { RADIO_CHANNEL, UNIT_CALLSIGN } from '@/lib/opsim/constants';
 import type { DifferentialChoice, DispatchInfo } from '@/lib/opsim/types';
 import type { SceneConfig } from '@/lib/opsim/scene';
+import type { DifficultyName } from '@/lib/opsim/dynamics';
 import { bls01 } from './bls-01';
+
+/** A Scene Dynamics distraction and when it appears (seconds after on-scene ops begin, §20). */
+export interface ScenarioDistraction {
+  readonly id: string;
+  readonly type: string;
+  readonly appearAtSecond: number;
+}
+
+/** BLS-01 dynamics: an anxious family, then a loud television. Difficulty gates how many run at once. */
+export const bls01Distractions: readonly ScenarioDistraction[] = [
+  { id: 'family', type: 'family', appearAtSecond: 2 },
+  { id: 'television', type: 'television', appearAtSecond: 6 },
+];
+
+export const bls01DynamicsDifficulty: DifficultyName = 'basic';
+
+/** Advanced variant for demonstrating several competing distractions at once. */
+export const bls01AdvancedDistractions: readonly ScenarioDistraction[] = [
+  { id: 'family', type: 'family', appearAtSecond: 2 },
+  { id: 'television', type: 'television', appearAtSecond: 3 },
+  { id: 'bystander', type: 'bystander', appearAtSecond: 4 },
+  { id: 'traffic', type: 'traffic', appearAtSecond: 5 },
+  { id: 'patient', type: 'patient_behavior', appearAtSecond: 6 },
+];
 
 /**
  * Operational dispatch data for BLS-01, kept in scenario data (not hard-coded

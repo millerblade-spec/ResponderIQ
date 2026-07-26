@@ -3,7 +3,13 @@
 import { useState } from 'react';
 import { ShiftStart } from './ShiftStart';
 import { OperationalSim } from '@/components/OperationalSim/OperationalSim';
-import { bls01Scene, bls01SecurityScene } from '@/lib/scenarios/bls-01.dispatch';
+import {
+  bls01Scene,
+  bls01SecurityScene,
+  bls01Distractions,
+  bls01AdvancedDistractions,
+  bls01DynamicsDifficulty,
+} from '@/lib/scenarios/bls-01.dispatch';
 import type { DifficultyLevel } from '@/lib/opsim/types';
 
 interface ScenarioRunnerProps {
@@ -15,6 +21,8 @@ interface ScenarioRunnerProps {
   readonly sceneVariant?: 'normal' | 'security';
   /** Fire response type — 'mvc_two_vehicle' brings two engines (demo/screenshots). */
   readonly callType?: 'ems' | 'mvc_two_vehicle';
+  /** 'advanced' presents several simultaneous distractions (demo/screenshots). */
+  readonly dynamicsVariant?: 'normal' | 'advanced';
 }
 
 /**
@@ -28,6 +36,7 @@ export function ScenarioRunner({
   learnerId,
   sceneVariant = 'normal',
   callType = 'ems',
+  dynamicsVariant = 'normal',
 }: ScenarioRunnerProps) {
   const [available, setAvailable] = useState(false);
 
@@ -43,5 +52,15 @@ export function ScenarioRunner({
   }
 
   const scene = sceneVariant === 'security' ? bls01SecurityScene : bls01Scene;
-  return <OperationalSim scenarioId={scenarioId} level={level} scene={scene} callType={callType} />;
+  const advanced = dynamicsVariant === 'advanced';
+  return (
+    <OperationalSim
+      scenarioId={scenarioId}
+      level={level}
+      scene={scene}
+      callType={callType}
+      distractions={advanced ? bls01AdvancedDistractions : bls01Distractions}
+      dynamicsDifficulty={advanced ? 'advanced' : bls01DynamicsDifficulty}
+    />
+  );
 }
