@@ -36,7 +36,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    // The bootstrap script below sets data-theme/data-lighting/data-reduced-motion
+    // on <html> before React hydrates, so those attributes intentionally differ
+    // from the server-rendered markup. suppressHydrationWarning scopes that
+    // expected difference to this element only (the standard theme-before-paint
+    // pattern) — it does not suppress warnings for any descendant.
+    <html lang="en" suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeBootstrap }} />
       </head>
