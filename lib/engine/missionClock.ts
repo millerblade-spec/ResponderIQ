@@ -157,10 +157,16 @@ export class MissionClock {
 
 /**
  * Drives a MissionClock from real wall-clock cadence via a single interval.
- * Returns a stop function. This is the ONLY place the app touches setInterval
- * for the mission clock — components consume the clock, they don't own timers.
+ * Optionally calls onTick after each advance (e.g. to push the elapsed seconds
+ * into React state for the visible clock) — so one interval serves both
+ * scheduling and display. Returns a stop function. This is the ONLY place the
+ * app touches setInterval for the mission clock — components consume the clock,
+ * they don't own timers.
  */
-export function startTicking(clock: MissionClock, intervalMs = 200): () => void {
-  const handle = setInterval(() => clock.tick(), intervalMs);
+export function startTicking(clock: MissionClock, intervalMs = 200, onTick?: () => void): () => void {
+  const handle = setInterval(() => {
+    clock.tick();
+    onTick?.();
+  }, intervalMs);
   return () => clearInterval(handle);
 }
