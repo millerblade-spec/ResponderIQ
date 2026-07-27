@@ -32,7 +32,7 @@ describe('Settings', () => {
 
     expect(screen.getByRole('checkbox', { name: /reduce motion/i })).toBeChecked();
     expect(document.documentElement.dataset.reducedMotion).toBe('true');
-    expect(JSON.parse(window.localStorage.getItem(SETTINGS_STORAGE_KEY) ?? '')).toEqual({
+    expect(JSON.parse(window.localStorage.getItem(SETTINGS_STORAGE_KEY) ?? '')).toMatchObject({
       reducedMotion: true,
       theme: 'system',
       lightingMode: 'standard',
@@ -44,7 +44,7 @@ describe('Settings', () => {
     fireEvent.change(screen.getByLabelText('Theme'), { target: { value: 'dark' } });
 
     expect(document.documentElement.dataset.theme).toBe('dark');
-    expect(JSON.parse(window.localStorage.getItem(SETTINGS_STORAGE_KEY) ?? '')).toEqual({
+    expect(JSON.parse(window.localStorage.getItem(SETTINGS_STORAGE_KEY) ?? '')).toMatchObject({
       reducedMotion: false,
       theme: 'dark',
       lightingMode: 'standard',
@@ -56,7 +56,7 @@ describe('Settings', () => {
     fireEvent.change(screen.getByLabelText('Emergency lighting'), { target: { value: 'reduced' } });
 
     expect(document.documentElement.dataset.lighting).toBe('reduced');
-    expect(JSON.parse(window.localStorage.getItem(SETTINGS_STORAGE_KEY) ?? '')).toEqual({
+    expect(JSON.parse(window.localStorage.getItem(SETTINGS_STORAGE_KEY) ?? '')).toMatchObject({
       reducedMotion: false,
       theme: 'system',
       lightingMode: 'reduced',

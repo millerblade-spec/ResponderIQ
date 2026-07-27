@@ -1,0 +1,62 @@
+.hud {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border: 1px solid var(--border);
+  background-color: var(--surface);
+  color: var(--fg);
+  border-radius: 999px;
+  padding: 0.3rem 0.7rem;
+  font-size: 0.78rem;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.chip.on {
+  border-color: var(--status-info);
+  color: var(--status-info);
+}
+
+.chip.warn {
+  border-color: var(--status-caution);
+  color: var(--status-caution);
+}
+
+.captions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  margin-top: 0.5rem;
+}
+
+.caption {
+  display: flex;
+  gap: 0.5rem;
+  align-items: baseline;
+  background-color: color-mix(in srgb, var(--fg) 6%, var(--surface));
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.4rem 0.7rem;
+  font-size: 0.85rem;
+}
+
+.captionSource {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--status-info);
+  white-space: nowrap;
+}
+
+.empty {
+  color: var(--fg-muted);
+  font-size: 0.82rem;
+}

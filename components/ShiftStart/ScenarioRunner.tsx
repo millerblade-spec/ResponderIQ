@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { AudioProvider } from '@/components/Audio/AudioProvider';
 import { ShiftStart } from './ShiftStart';
 import { OperationalSim } from '@/components/OperationalSim/OperationalSim';
 import {
@@ -54,13 +55,15 @@ export function ScenarioRunner({
   const scene = sceneVariant === 'security' ? bls01SecurityScene : bls01Scene;
   const advanced = dynamicsVariant === 'advanced';
   return (
-    <OperationalSim
-      scenarioId={scenarioId}
-      level={level}
-      scene={scene}
-      callType={callType}
-      distractions={advanced ? bls01AdvancedDistractions : bls01Distractions}
-      dynamicsDifficulty={advanced ? 'advanced' : bls01DynamicsDifficulty}
-    />
+    <AudioProvider>
+      <OperationalSim
+        scenarioId={scenarioId}
+        level={level}
+        scene={scene}
+        callType={callType}
+        distractions={advanced ? bls01AdvancedDistractions : bls01Distractions}
+        dynamicsDifficulty={advanced ? 'advanced' : bls01DynamicsDifficulty}
+      />
+    </AudioProvider>
   );
 }

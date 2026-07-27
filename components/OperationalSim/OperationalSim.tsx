@@ -20,6 +20,8 @@ import type { ClinicalModel } from '@/lib/opsim/clinical';
 import { fireResponseFor, type CallType } from '@/lib/opsim/crew';
 import { OnSceneOps } from './OnSceneOps';
 import { RunComplete, type RunFacts } from '@/components/RunComplete/RunComplete';
+import { useAudioOptional } from '@/components/Audio/AudioProvider';
+import { AudioHud } from '@/components/Audio/AudioHud';
 import {
   createInitialOpSimState,
   completeTone,
@@ -91,9 +93,15 @@ export function OperationalSim({
   const [state, setState] = useState(() => createInitialOpSimState(scenarioId, level));
   const [displaySeconds, setDisplaySeconds] = useState(0);
   const [completedFacts, setCompletedFacts] = useState<RunFacts | null>(null);
+  const audioController = useAudioOptional()?.controller;
 
   const scheduledRef = useRef<number[]>([]);
   const finalizeHandledRef = useRef(false);
+
+  // The 3-second dispatch alert, played once when the console mounts (§7, §11).
+  useEffect(() => {
+    audioController?.play('dispatch_alert', { onceKey: 'dispatch-alert' });
+  }, [audioController]);
 
   const timerSeconds = differentialTimerSeconds(level, config);
   const toneSeconds = config.timing.dispatchToneSeconds;
@@ -177,6 +185,8 @@ export function OperationalSim({
             {formatSeconds(displaySeconds)}
           </span>
         </div>
+
+        <AudioHud />
 
         {responding && dispatch.responseMode === 'code_3' && (
           <div

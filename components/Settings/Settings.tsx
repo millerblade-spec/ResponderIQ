@@ -3,6 +3,7 @@
 import { useCallback, useRef, useState, useSyncExternalStore } from 'react';
 import Link from 'next/link';
 import { LOCAL_ADMIN_REVIEW_STORAGE_KEY } from '@/components/SimulatorPlayer/SimulatorPlayer';
+import { AudioSettings } from './AudioSettings';
 import {
   DEFAULT_SETTINGS,
   SETTINGS_STORAGE_KEY,
@@ -180,6 +181,8 @@ export function Settings() {
           )}
           {justCleared && <p className={styles.confirmation}>Cleared.</p>}
         </section>
+
+        <AudioSettings />
 
         <Link href="/dashboard" className={styles.backLink}>
           Back to dashboard

@@ -1,7 +1,9 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { MissionClock } from '@/lib/engine/missionClock';
+import { useAudioOptional } from '@/components/Audio/AudioProvider';
+import { scheduleEngineArrivalAudio } from '@/lib/audio/sequence';
 import type { Apparatus } from '@/lib/opsim/crew';
 import type { DifficultyName } from '@/lib/opsim/dynamics';
 import type { SceneConfig } from '@/lib/opsim/scene';
@@ -55,10 +57,20 @@ export function OnSceneOps({
   onComplete,
 }: OnSceneOpsProps) {
   const controller = useCrew(engines, equipmentOnScene, clock);
+  const audioController = useAudioOptional()?.controller;
   const [clinicalUnlocked, setClinicalUnlocked] = useState(false);
   const sceneRef = useRef<SceneSafetyState | undefined>(undefined);
   const dynamicsRef = useRef<DynamicsState | undefined>(undefined);
   const clinicalRef = useRef<ClinicalState | undefined>(undefined);
+  const arrivalAudioRef = useRef(false);
+
+  // Fire-engine arrival audio sequence, on the shared clock, played once (§11).
+  // (Clinical audio gating is owned by ClinicalPanel, which has the live state.)
+  useEffect(() => {
+    if (!controller.ronArrived || arrivalAudioRef.current || !audioController) return;
+    arrivalAudioRef.current = true;
+    scheduleEngineArrivalAudio(audioController, clock, 'engine');
+  }, [controller.ronArrived, audioController, clock]);
 
   function complete() {
     const evaluationId =

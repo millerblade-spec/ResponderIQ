@@ -24,6 +24,8 @@ import {
   type DynamicsState,
 } from '@/lib/opsim/dynamicsMachine';
 import type { ScenarioDistraction } from '@/lib/scenarios/bls-01.dispatch';
+import { syncDistractionAudio } from '@/lib/audio/dynamicsAudio';
+import { useAudioOptional } from '@/components/Audio/AudioProvider';
 import type { CrewController } from './useCrew';
 import opStyles from './OperationalSim.module.css';
 import styles from './SceneDynamics.module.css';
@@ -57,6 +59,7 @@ export function SceneDynamics({
   const [blocked, setBlocked] = useState<Record<string, string>>({});
   const scheduledRef = useRef<number[]>([]);
   const resolutionRef = useRef<Record<string, number>>({});
+  const audioController = useAudioOptional()?.controller;
 
   // Appearance + escalation scheduling. escalate() no-ops while managed/resolved
   // or at the max stage, so a single recurring timer naturally pauses/resumes.
@@ -79,7 +82,16 @@ export function SceneDynamics({
 
   useEffect(() => {
     onStateChange?.(dynamics);
-  }, [dynamics, onStateChange]);
+    // Scene Dynamics audio follows the existing stages (§20/§11) — louder as it
+    // escalates, stopped when managed or resolved.
+    if (audioController) {
+      for (const id of dynamics.order) {
+        const issue = dynamics.issues[id];
+        const maxStageIndex = Math.max(0, (distractionType(issue.type)?.stages.length ?? 1) - 1);
+        syncDistractionAudio(audioController, { type: issue.type, stageIndex: issue.stageIndex, resolved: issue.resolved, managed: issue.managed }, maxStageIndex);
+      }
+    }
+  }, [dynamics, onStateChange, audioController]);
 
   const now = clock.elapsedSeconds();
 

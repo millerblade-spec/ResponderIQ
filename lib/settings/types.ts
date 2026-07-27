@@ -18,6 +18,21 @@ export type ThemePreference = 'system' | 'light' | 'dark';
  */
 export type LightingMode = 'standard' | 'reduced';
 
+/** Step 11 audio preferences, persisted through this same settings store (no parallel store). */
+export interface AudioSettings {
+  readonly master: number;
+  readonly channels: {
+    readonly partner_ron: number;
+    readonly dispatch_radio: number;
+    readonly emergency_warning: number;
+    readonly scene_patient: number;
+    readonly medical_equipment: number;
+  };
+  readonly muted: boolean;
+  readonly reducedSensory: boolean;
+  readonly captionsOn: boolean;
+}
+
 export interface AppSettings {
   /** Forces the same reduced-motion CSS the app already applies when the OS requests it (globals.css), regardless of OS setting. */
   readonly reducedMotion: boolean;
@@ -25,4 +40,6 @@ export interface AppSettings {
   readonly theme: ThemePreference;
   /** §3 Standard Emergency Lighting vs Reduced Flashing Mode. */
   readonly lightingMode: LightingMode;
+  /** Step 11 audio channels, captions, Reduced Sensory Mode, mute. */
+  readonly audio: AudioSettings;
 }

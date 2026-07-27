@@ -27,6 +27,7 @@ import {
   type ClinicalState,
 } from '@/lib/opsim/clinicalMachine';
 import type { DifferentialChoice } from '@/lib/opsim/types';
+import { useAudioOptional } from '@/components/Audio/AudioProvider';
 import type { CrewController } from './useCrew';
 import opStyles from './OperationalSim.module.css';
 import styles from './ClinicalPanel.module.css';
@@ -140,6 +141,8 @@ export function ClinicalPanel({
   const [region, setRegion] = useState<string>('extremities');
   const scheduledRef = useRef<number[]>([]);
   const deteriorationRef = useRef(false);
+  const audioController = useAudioOptional()?.controller;
+  const playedCuesRef = useRef<Set<string>>(new Set());
 
   // Scenario deterioration, scheduled once patient contact unlocks clinical work.
   useEffect(() => {
@@ -161,6 +164,25 @@ export function ClinicalPanel({
   const now = clock.elapsedSeconds();
   const equipmentOnScene = controller.crew.equipmentOnScene;
   const labelFor = (id: string) => differentialChoices.find((c) => c.id === id)?.label ?? id;
+
+  // Medical-equipment audio is unlocked ONLY when its task completes (§ Step 11):
+  // the gate reflects the live clinical + equipment state so nothing plays early.
+  useEffect(() => {
+    if (!audioController) return;
+    audioController.setGatingContext({
+      clinicalComplete: (id) => clinical.actions[id]?.status === 'complete',
+      equipmentInUse: (eq) => equipmentOnScene.includes(eq),
+    });
+    const cue = (actionId: string, event: string) => {
+      if (clinical.actions[actionId]?.status === 'complete' && !playedCuesRef.current.has(event)) {
+        if (audioController.play(event, { onceKey: `clinical:${event}` })) playedCuesRef.current.add(event);
+      }
+    };
+    cue('apply_monitor', 'monitor_startup');
+    cue('apply_monitor', 'ecg_tone');
+    cue('obtain_12_lead', 'twelve_lead_tone');
+    cue('check_glucose', 'bp_cuff');
+  }, [clinical, equipmentOnScene, audioController]);
 
   const freeResponders = controller.crew.order
     .map((id) => controller.crew.responders[id])

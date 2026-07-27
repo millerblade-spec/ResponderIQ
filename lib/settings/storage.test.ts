@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { DEFAULT_SETTINGS, SETTINGS_STORAGE_KEY, loadSettings, saveSettings, resolveTheme } from './storage';
+import { DEFAULT_SETTINGS, DEFAULT_AUDIO_SETTINGS, SETTINGS_STORAGE_KEY, loadSettings, saveSettings, resolveTheme } from './storage';
 
 describe('settings storage', () => {
   beforeEach(() => {
@@ -16,9 +16,15 @@ describe('settings storage', () => {
   });
 
   it('round-trips a fully-specified saved value', () => {
-    const value = { reducedMotion: true, theme: 'dark', lightingMode: 'reduced' } as const;
+    const value = { reducedMotion: true, theme: 'dark', lightingMode: 'reduced', audio: DEFAULT_AUDIO_SETTINGS } as const;
     saveSettings(value);
     expect(loadSettings()).toEqual(value);
+  });
+
+  it('persists audio settings (channels, captions, reduced sensory, mute) — no parallel store', () => {
+    const audio = { ...DEFAULT_AUDIO_SETTINGS, master: 0.5, muted: true, reducedSensory: true, captionsOn: false };
+    saveSettings({ reducedMotion: false, theme: 'system', lightingMode: 'standard', audio });
+    expect(loadSettings().audio).toEqual(audio);
   });
 
   it('falls back to defaults on corrupt JSON rather than throwing', () => {
@@ -39,7 +45,7 @@ describe('settings storage', () => {
       SETTINGS_STORAGE_KEY,
       JSON.stringify({ reducedMotion: true, theme: 'not-a-theme' }),
     );
-    expect(loadSettings()).toEqual({ reducedMotion: true, theme: 'system', lightingMode: 'standard' });
+    expect(loadSettings()).toEqual({ reducedMotion: true, theme: 'system', lightingMode: 'standard', audio: DEFAULT_AUDIO_SETTINGS });
   });
 
   it('ignores unknown extra fields without throwing', () => {
@@ -47,7 +53,7 @@ describe('settings storage', () => {
       SETTINGS_STORAGE_KEY,
       JSON.stringify({ reducedMotion: true, somethingFromAFutureVersion: 'x' }),
     );
-    expect(loadSettings()).toEqual({ reducedMotion: true, theme: 'system', lightingMode: 'standard' });
+    expect(loadSettings()).toEqual({ reducedMotion: true, theme: 'system', lightingMode: 'standard', audio: DEFAULT_AUDIO_SETTINGS });
   });
 });
 
