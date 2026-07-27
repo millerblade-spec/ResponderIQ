@@ -12,12 +12,13 @@ simulator. Nothing below is claimed unless it was actually run and verified._
 | Branch | `feature/responderiq-operational-ui` |
 | PR | #3 — https://github.com/Millerblade-Spec/ResponderIQ/pull/3 |
 | Base commit | `26230a0` (merge-base with `main`) |
-| Final HEAD | `19aafe2` |
+| Step 12 implementation commit | `e5fab30` |
+| Final HEAD | branch tip of `feature/responderiq-operational-ui` — the commit that finalizes this handoff, reported in the delivery message |
 
 **Commit list (base → HEAD):**
 
 ```
-19aafe2   Step 12: final regression, accessibility, screenshots, arrival-audio cleanup
+e5fab30   Step 12: final regression, accessibility, screenshots, arrival-audio cleanup
 22f1d52   Step 11 polish: caption HUD via external store; stop one-shot distraction flood
 b35803d   Step 11: audio framework, typed manifest, placeholders, captions, reduced-sensory, gating
 b139749   Step 10: reflection, feedback, debrief, time management, sign-in, admin reporting (§23–§28)
