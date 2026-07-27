@@ -60,3 +60,28 @@ CREATE TABLE IF NOT EXISTS truck_check_attempts (
 
 CREATE INDEX IF NOT EXISTS truck_check_attempts_learner_idx
   ON truck_check_attempts (learner_id, created_at DESC);
+
+-- Completed operational runs (Step 10). Extends the existing review system
+-- rather than adding a second persistence path: keyed by a client evaluation_id
+-- for retry-safety (same as review_records), storing the full validated run
+-- payload (differentials, equipment, scene safety, crew, dynamics, clinical,
+-- reassessments, time metrics, reflection, feedback, critical events) as JSONB.
+-- The administrator score is never stored — it is derived from the payload at
+-- read time, so no score can leak to the learner. Legacy review_records are
+-- untouched and remain readable.
+CREATE TABLE IF NOT EXISTS operational_runs (
+  evaluation_id  UUID PRIMARY KEY,
+  scenario_id    TEXT NOT NULL,
+  learner_name   TEXT NOT NULL,
+  badge_id       TEXT NOT NULL,
+  difficulty     TEXT NOT NULL,
+  attempt_number INTEGER NOT NULL,
+  payload        JSONB NOT NULL,
+  created_at     TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS operational_runs_learner_idx
+  ON operational_runs (badge_id, scenario_id, created_at DESC);
+
+CREATE INDEX IF NOT EXISTS operational_runs_scenario_idx
+  ON operational_runs (scenario_id, created_at DESC);

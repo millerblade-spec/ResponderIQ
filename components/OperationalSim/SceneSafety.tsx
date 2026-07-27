@@ -28,6 +28,7 @@ import {
   establishPatientContact,
   clinicalUnlocked,
   preContactStatus,
+  type SceneSafetyState,
 } from '@/lib/opsim/sceneMachine';
 import opStyles from './OperationalSim.module.css';
 import styles from './SceneSafety.module.css';
@@ -38,6 +39,8 @@ interface SceneSafetyProps {
   readonly simConfig?: SimulatorConfig;
   /** Reports whether clinical actions are unlocked (windshield + safe + exit + patient contact, §19). */
   readonly onClinicalUnlockChange?: (unlocked: boolean) => void;
+  /** Reports the latest scene-safety state up for run capture (§ Step 10). */
+  readonly onStateChange?: (state: SceneSafetyState) => void;
 }
 
 const CATEGORY_ORDER: readonly WindshieldCategory[] = [
@@ -59,6 +62,7 @@ export function SceneSafety({
   clock,
   simConfig = DEFAULT_SIMULATOR_CONFIG,
   onClinicalUnlockChange,
+  onStateChange,
 }: SceneSafetyProps) {
   const [state, setState] = useState(() => createSceneSafetyState(config));
   const policeScheduledRef = useRef(false);
@@ -68,7 +72,8 @@ export function SceneSafety({
   // Report the clinical-lock state up so the clinical panel can gate on it (§19).
   useEffect(() => {
     onClinicalUnlockChange?.(clinicalUnlocked(state));
-  }, [state, onClinicalUnlockChange]);
+    onStateChange?.(state);
+  }, [state, onClinicalUnlockChange, onStateChange]);
 
   // Police arrive 15s after staging on a security scene (§16).
   useEffect(() => {

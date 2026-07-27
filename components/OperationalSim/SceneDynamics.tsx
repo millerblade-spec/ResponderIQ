@@ -34,6 +34,8 @@ interface SceneDynamicsProps {
   readonly difficulty: DifficultyName;
   readonly distractions: readonly ScenarioDistraction[];
   readonly simConfig?: SimulatorConfig;
+  /** Reports the latest dynamics state up for run capture (§ Step 10). */
+  readonly onStateChange?: (state: DynamicsState) => void;
 }
 
 /**
@@ -48,6 +50,7 @@ export function SceneDynamics({
   difficulty,
   distractions,
   simConfig = DEFAULT_SIMULATOR_CONFIG,
+  onStateChange,
 }: SceneDynamicsProps) {
   const [dynamics, setDynamics] = useState<DynamicsState>(() => createDynamicsState(difficulty));
   const [pick, setPick] = useState<{ issueId: string; actionId: string; crewTaskId: string } | null>(null);
@@ -73,6 +76,10 @@ export function SceneDynamics({
     const scheduled = scheduledRef.current;
     return () => scheduled.forEach((id) => clock.cancel(id));
   }, [distractions, clock, simConfig, difficulty]);
+
+  useEffect(() => {
+    onStateChange?.(dynamics);
+  }, [dynamics, onStateChange]);
 
   const now = clock.elapsedSeconds();
 

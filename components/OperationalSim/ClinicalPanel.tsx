@@ -38,6 +38,8 @@ interface ClinicalPanelProps {
   readonly model: ClinicalModel;
   readonly initialDifferential: readonly string[];
   readonly differentialChoices: readonly DifferentialChoice[];
+  /** Reports the latest clinical state up for run capture (§ Step 10). */
+  readonly onStateChange?: (state: ClinicalState) => void;
 }
 
 interface ActionControlProps {
@@ -130,6 +132,7 @@ export function ClinicalPanel({
   model,
   initialDifferential,
   differentialChoices,
+  onStateChange,
 }: ClinicalPanelProps) {
   const [clinical, setClinical] = useState<ClinicalState>(() => createClinicalState(initialDifferential));
   const [pick, setPick] = useState<string | null>(null); // actionId awaiting a responder
@@ -150,6 +153,10 @@ export function ClinicalPanel({
     const scheduled = scheduledRef.current;
     return () => scheduled.forEach((id) => clock.cancel(id));
   }, [clock]);
+
+  useEffect(() => {
+    onStateChange?.(clinical);
+  }, [clinical, onStateChange]);
 
   const now = clock.elapsedSeconds();
   const equipmentOnScene = controller.crew.equipmentOnScene;

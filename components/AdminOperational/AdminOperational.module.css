@@ -1,0 +1,152 @@
+.wrap {
+  width: 100%;
+  max-width: 820px;
+  margin: 0 auto;
+}
+
+.heading {
+  font-size: 1.4rem;
+  font-weight: 800;
+  margin-bottom: 0.75rem;
+}
+
+.list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.7rem 0.9rem;
+  text-decoration: none;
+  color: inherit;
+}
+
+.row:hover {
+  border-color: var(--fg-muted);
+}
+
+.rowMain {
+  font-weight: 700;
+}
+
+.rowMeta {
+  color: var(--fg-muted);
+  font-size: 0.85rem;
+}
+
+.empty,
+.error {
+  color: var(--fg-muted);
+}
+
+.scoreBox {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 1rem 1.25rem;
+  margin-bottom: 1rem;
+}
+
+.scoreNumber {
+  font-size: 2.4rem;
+  font-weight: 800;
+}
+
+.scoreBand {
+  font-weight: 700;
+}
+
+.pass {
+  color: var(--status-safe);
+}
+.fail {
+  color: var(--status-critical);
+}
+
+.critical {
+  border: 1px solid var(--status-critical);
+  background-color: color-mix(in srgb, var(--status-critical) 12%, transparent);
+  color: var(--status-critical);
+  border-radius: 8px;
+  padding: 0.85rem 1rem;
+  margin-bottom: 1rem;
+  font-weight: 700;
+}
+
+.criticalList {
+  margin: 0.4rem 0 0 1.1rem;
+  font-weight: 500;
+}
+
+.section {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.9rem 1.1rem;
+  margin-bottom: 0.75rem;
+}
+
+.sectionTitle {
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+}
+
+.catRow {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  font-size: 0.88rem;
+  padding: 0.25rem 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.catRow:last-child {
+  border-bottom: none;
+}
+
+.catPoints {
+  font-variant-numeric: tabular-nums;
+  color: var(--fg-muted);
+}
+
+.meta {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 0.4rem;
+  margin-bottom: 1rem;
+}
+
+.metaItem {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.45rem 0.6rem;
+  font-size: 0.85rem;
+}
+
+.metaLabel {
+  color: var(--fg-muted);
+  font-size: 0.72rem;
+  display: block;
+}
+
+.kv {
+  font-size: 0.88rem;
+  padding: 0.2rem 0;
+}
+
+.kvKey {
+  color: var(--fg-muted);
+}
+
+.progress {
+  font-size: 0.9rem;
+}

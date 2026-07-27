@@ -19,6 +19,7 @@ import { bls01Clinical } from '@/lib/opsim/clinical';
 import type { ClinicalModel } from '@/lib/opsim/clinical';
 import { fireResponseFor, type CallType } from '@/lib/opsim/crew';
 import { OnSceneOps } from './OnSceneOps';
+import { RunComplete, type RunFacts } from '@/components/RunComplete/RunComplete';
 import {
   createInitialOpSimState,
   completeTone,
@@ -89,6 +90,7 @@ export function OperationalSim({
   const [activeClock] = useState(() => clock ?? new MissionClock(systemTimeSource));
   const [state, setState] = useState(() => createInitialOpSimState(scenarioId, level));
   const [displaySeconds, setDisplaySeconds] = useState(0);
+  const [completedFacts, setCompletedFacts] = useState<RunFacts | null>(null);
 
   const scheduledRef = useRef<number[]>([]);
   const finalizeHandledRef = useRef(false);
@@ -143,6 +145,11 @@ export function OperationalSim({
 
   const remaining = Math.max(0, toneSeconds + timerSeconds - displaySeconds);
   const responding = state.responseStatus === 'responding';
+
+  // The run is complete — hand off to reflection, feedback, and the debrief.
+  if (completedFacts) {
+    return <RunComplete facts={completedFacts} />;
+  }
 
   return (
     <main>
@@ -237,6 +244,9 @@ export function OperationalSim({
             clinicalModel={clinicalModel}
             initialDifferential={state.differential.ranking}
             differentialChoices={choices}
+            scenarioId={scenarioId}
+            runDifficulty={level}
+            onComplete={setCompletedFacts}
           />
         )}
       </div>
