@@ -4,6 +4,7 @@
  * distraction escalates; stopped when it is managed or resolved.
  */
 import type { AudioController } from './controller';
+import { audioAsset } from './manifest';
 
 /** The looping/one-shot audio event a distraction type drives, if any. */
 export function dynamicsAudioEvent(type: string): string | null {
@@ -46,5 +47,11 @@ export function syncDistractionAudio(
     controller.stop(event);
     return;
   }
-  controller.play(event, { volume: dynamicsVolume(issue.stageIndex, maxStageIndex) });
+  const volume = dynamicsVolume(issue.stageIndex, maxStageIndex);
+  // Looping distractions (TV, crowd, traffic) play continuously and get a louder
+  // volume re-applied as they escalate. One-shot cues (a family interruption)
+  // must NOT replay every render — they fire once when the distraction appears
+  // and once at each escalation stage, keyed so rerenders don't flood the HUD.
+  const looping = audioAsset(event)?.looping ?? false;
+  controller.play(event, looping ? { volume } : { volume, onceKey: `${event}:${issue.stageIndex}` });
 }

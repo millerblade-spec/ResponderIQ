@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useContext, useEffect, useState, useSyncExternalStore } from 'react';
 import { AudioController, type CaptionEvent } from '@/lib/audio/controller';
 import { createWebAudioSink } from '@/lib/audio/webAudioSink';
 import type { AudioChannel } from '@/lib/audio/manifest';
@@ -40,12 +40,19 @@ export function AudioProvider({ children }: { readonly children: React.ReactNode
     return { controller: new AudioController(s, readAudioSettings()), sink: s };
   });
   const [settings, setSettings] = useState<AudioSettings>(() => controller.getState());
-  const [captions, setCaptions] = useState<readonly CaptionEvent[]>([]);
+  // Captions live in the controller (an external store). useSyncExternalStore
+  // reads them WITHOUT setState-in-effect, and re-reads the snapshot after
+  // subscribing — so a caption emitted between render and effect (the dispatch
+  // alert, played by a child effect) is still picked up.
+  const captions = useSyncExternalStore(
+    controller.subscribeCaptions,
+    controller.getCaptionsSnapshot,
+    controller.getCaptionsSnapshot,
+  );
 
   useEffect(() => {
-    const unsub = controller.onCaption((c) => setCaptions((prev) => [...prev.slice(-6), c]));
+    // Stop all audio and release the AudioContext on unmount / route change.
     return () => {
-      unsub();
       controller.cleanup();
       sink.close();
     };

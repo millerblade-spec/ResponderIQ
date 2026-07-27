@@ -187,4 +187,19 @@ describe('scene dynamics audio (§20 integration)', () => {
     syncDistractionAudio(c, { type: 'television', stageIndex: 3, resolved: false, managed: true }, 3);
     expect(stopped).toContain('television');
   });
+
+  it('does not replay a one-shot distraction cue (family) on every rerender — one per stage', () => {
+    const { sink, played } = recordingSink();
+    const c = new AudioController(sink, DEFAULT_AUDIO_STATE, OPEN_GATE);
+    const issue = { type: 'family', stageIndex: 0, resolved: false, managed: false };
+    // Many rerenders at the same stage -> a single play (and a single caption).
+    syncDistractionAudio(c, issue, 4);
+    syncDistractionAudio(c, issue, 4);
+    syncDistractionAudio(c, issue, 4);
+    expect(played.filter((p) => p.assetId === 'family_interrupt')).toHaveLength(1);
+    expect(c.captions().filter((cap) => cap.assetId === 'family_interrupt')).toHaveLength(1);
+    // A new escalation stage fires the interruption again.
+    syncDistractionAudio(c, { ...issue, stageIndex: 1 }, 4);
+    expect(played.filter((p) => p.assetId === 'family_interrupt')).toHaveLength(2);
+  });
 });

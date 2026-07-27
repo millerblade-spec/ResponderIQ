@@ -26,6 +26,11 @@ export interface CaptionEvent {
   readonly seq: number;
 }
 
+/** Stable empty snapshot so useSyncExternalStore has a constant server/initial reference. */
+const EMPTY_CAPTIONS: readonly CaptionEvent[] = [];
+/** How many recent captions the HUD snapshot exposes. */
+const CAPTION_SNAPSHOT_SIZE = 6;
+
 export interface AudioSettingsState {
   master: number;
   channels: Record<AudioChannel, number>;
@@ -60,6 +65,9 @@ export class AudioController {
   private captionLog: CaptionEvent[] = [];
   private captionSeq = 0;
   private captionListeners = new Set<(c: CaptionEvent) => void>();
+  /** Cached recent-captions slice — a fresh reference only when a caption is added. */
+  private captionSnapshot: readonly CaptionEvent[] = EMPTY_CAPTIONS;
+  private snapshotListeners = new Set<() => void>();
 
   constructor(private readonly sink: AudioSink, state: AudioSettingsState = DEFAULT_AUDIO_STATE, gate: GatingContext = CLOSED_GATE) {
     this.state = { ...state, channels: { ...state.channels } };
@@ -146,7 +154,9 @@ export class AudioController {
     if (!this.state.captionsOn) return;
     this.captionLog.push(c);
     if (this.captionLog.length > 50) this.captionLog.shift();
+    this.captionSnapshot = this.captionLog.slice(-CAPTION_SNAPSHOT_SIZE);
     for (const l of this.captionListeners) l(c);
+    for (const l of this.snapshotListeners) l();
   }
   captions(): readonly CaptionEvent[] {
     return this.captionLog;
@@ -156,10 +166,21 @@ export class AudioController {
     return () => this.captionListeners.delete(cb);
   }
 
+  // useSyncExternalStore adapters (bound so they can be passed by reference).
+  // getCaptionsSnapshot returns a STABLE reference between caption emissions,
+  // and subscribeCaptions notifies on every new caption — including any emitted
+  // between render and effect (e.g. the dispatch alert), which the store re-reads.
+  readonly subscribeCaptions = (cb: () => void): (() => void) => {
+    this.snapshotListeners.add(cb);
+    return () => this.snapshotListeners.delete(cb);
+  };
+  readonly getCaptionsSnapshot = (): readonly CaptionEvent[] => this.captionSnapshot;
+
   /** Stops all active audio and clears listeners — call on unmount / route change. */
   cleanup() {
     for (const handle of this.active.values()) this.sink.stop(handle);
     this.active.clear();
     this.captionListeners.clear();
+    this.snapshotListeners.clear();
   }
 }
