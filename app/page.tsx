@@ -1,12 +1,18 @@
 import { Button } from '@/components/Button';
+import { Wordmark } from '@/components/Wordmark/Wordmark';
 import styles from './home.module.css';
 
 export default function HomePage() {
   return (
     <main>
-      <div className={styles.wordmark}>ResponderIQ</div>
+      <Wordmark />
       <p className={styles.tagline}>Adaptive EMS training, built on real decisions.</p>
-      <Button href="/dashboard">Begin training</Button>
+      <div className={styles.actions}>
+        <Button href="/dashboard">Begin training</Button>
+        <Button href="/instructions" variant="secondary">
+          Instructions &amp; general information
+        </Button>
+      </div>
     </main>
   );
 }

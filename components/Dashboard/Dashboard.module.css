@@ -4,9 +4,20 @@
   margin: 0 auto;
 }
 
+.brand {
+  margin-bottom: 1rem;
+}
+
 .heading {
   font-size: 1.5rem;
   font-weight: 600;
+}
+
+.footerLinks {
+  display: flex;
+  gap: 1.25rem;
+  flex-wrap: wrap;
+  margin-top: 1.5rem;
 }
 
 .list {
@@ -45,7 +56,6 @@
 
 .settingsLink {
   display: inline-block;
-  margin-top: 1.5rem;
   color: var(--fg-muted);
   font-size: 0.9rem;
   text-decoration: none;

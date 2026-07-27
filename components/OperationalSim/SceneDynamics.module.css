@@ -1,0 +1,148 @@
+.panel {
+  border-color: var(--status-behavioral);
+}
+
+.issue {
+  border: 1px solid var(--status-behavioral);
+  border-left-width: 4px;
+  border-radius: 8px;
+  padding: 0.85rem 1rem;
+  margin-bottom: 0.6rem;
+  background-color: color-mix(in srgb, var(--status-behavioral) 8%, var(--surface));
+}
+
+.issue.sev_orange {
+  border-left-color: var(--status-caution);
+}
+.issue.sev_red {
+  border-left-color: var(--status-critical);
+}
+.issue.sev_yellow {
+  border-left-color: var(--status-pending);
+}
+.issue.resolved {
+  opacity: 0.6;
+  border-left-color: var(--status-safe);
+}
+
+.issueHeader {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.issueTitle {
+  font-weight: 700;
+}
+
+.statusChip {
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  border: 1px solid var(--status-behavioral);
+  color: var(--status-behavioral);
+}
+
+.statusChip.threat {
+  border-color: var(--status-critical);
+  color: var(--status-critical);
+}
+.statusChip.managed {
+  border-color: var(--status-info);
+  color: var(--status-info);
+}
+.statusChip.resolvedChip {
+  border-color: var(--status-safe);
+  color: var(--status-safe);
+}
+
+.stageLine {
+  font-size: 0.9rem;
+  margin-top: 0.3rem;
+}
+
+.meta {
+  display: flex;
+  gap: 0.5rem 1rem;
+  flex-wrap: wrap;
+  font-size: 0.78rem;
+  color: var(--fg-muted);
+  margin-top: 0.3rem;
+}
+
+.countdown {
+  color: var(--status-caution);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.consequence {
+  font-size: 0.82rem;
+  color: var(--status-caution);
+  margin-top: 0.35rem;
+  font-weight: 600;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 0.6rem;
+}
+
+.actionButton {
+  border: 1px solid var(--border);
+  background-color: var(--bg);
+  color: var(--fg);
+  border-radius: 5px;
+  padding: 0.35rem 0.6rem;
+  font-size: 0.8rem;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.actionButton:hover {
+  border-color: var(--status-behavioral);
+}
+
+.picker {
+  margin-top: 0.5rem;
+  border: 1px dashed var(--status-info);
+  border-radius: 6px;
+  padding: 0.6rem;
+}
+
+.pickerTitle {
+  font-size: 0.8rem;
+  font-weight: 700;
+  margin-bottom: 0.4rem;
+}
+
+.blocked {
+  font-size: 0.8rem;
+  color: var(--status-caution);
+  margin-top: 0.3rem;
+}
+
+.ronLine {
+  font-size: 0.9rem;
+  color: var(--status-info);
+  font-weight: 600;
+}
+
+.fireAwaiting {
+  font-size: 0.85rem;
+  color: var(--fg-muted);
+  border: 1px dashed var(--border);
+  border-radius: 6px;
+  padding: 0.6rem 0.8rem;
+  margin-bottom: 0.6rem;
+}
+
+.empty {
+  color: var(--fg-muted);
+  font-size: 0.9rem;
+}

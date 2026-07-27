@@ -3,6 +3,7 @@
 import { useCallback, useRef, useSyncExternalStore } from 'react';
 import Link from 'next/link';
 import { Card } from '@/components/Card';
+import { Wordmark } from '@/components/Wordmark/Wordmark';
 import { bls01 } from '@/lib/scenarios/bls-01';
 import { LOCAL_ADMIN_REVIEW_STORAGE_KEY } from '@/components/SimulatorPlayer/SimulatorPlayer';
 import type { SceneState } from '@/lib/engine/types';
@@ -56,6 +57,7 @@ export function Dashboard() {
 
   return (
     <main className={styles.wrap}>
+      <Wordmark size={1.6} className={styles.brand} />
       <h1 className={styles.heading}>Dashboard</h1>
       <div className={styles.list}>
         <Link href={`/scenarios/${bls01.id}`} className={styles.link}>
@@ -66,9 +68,14 @@ export function Dashboard() {
           </Card>
         </Link>
       </div>
-      <Link href="/settings" className={styles.settingsLink}>
-        Settings
-      </Link>
+      <div className={styles.footerLinks}>
+        <Link href="/instructions" className={styles.settingsLink}>
+          Instructions &amp; general information
+        </Link>
+        <Link href="/settings" className={styles.settingsLink}>
+          Settings
+        </Link>
+      </div>
     </main>
   );
 }

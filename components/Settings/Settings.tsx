@@ -3,8 +3,15 @@
 import { useCallback, useRef, useState, useSyncExternalStore } from 'react';
 import Link from 'next/link';
 import { LOCAL_ADMIN_REVIEW_STORAGE_KEY } from '@/components/SimulatorPlayer/SimulatorPlayer';
-import { DEFAULT_SETTINGS, SETTINGS_STORAGE_KEY, loadSettings, saveSettings } from '@/lib/settings/storage';
-import type { AppSettings } from '@/lib/settings/types';
+import { AudioSettings } from './AudioSettings';
+import {
+  DEFAULT_SETTINGS,
+  SETTINGS_STORAGE_KEY,
+  loadSettings,
+  resolveTheme,
+  saveSettings,
+} from '@/lib/settings/storage';
+import type { AppSettings, LightingMode, ThemePreference } from '@/lib/settings/types';
 import styles from './Settings.module.css';
 
 interface SettingsSnapshot {
@@ -51,16 +58,32 @@ export function Settings() {
   // be reflected until another tab's event arrives (or never, if there is
   // no other tab). These give immediate feedback for actions taken here.
   const [reducedMotionOverride, setReducedMotionOverride] = useState<boolean | null>(null);
+  const [themeOverride, setThemeOverride] = useState<ThemePreference | null>(null);
+  const [lightingOverride, setLightingOverride] = useState<LightingMode | null>(null);
   const [justCleared, setJustCleared] = useState(false);
   const [confirmingClear, setConfirmingClear] = useState(false);
 
   const reducedMotion = reducedMotionOverride ?? stored.settings.reducedMotion;
+  const theme = themeOverride ?? stored.settings.theme;
+  const lightingMode = lightingOverride ?? stored.settings.lightingMode;
   const hasLocalReviewData = justCleared ? false : stored.hasLocalReviewData;
 
   function handleReducedMotionChange(next: boolean) {
     setReducedMotionOverride(next);
     saveSettings({ ...stored.settings, reducedMotion: next });
     document.documentElement.dataset.reducedMotion = next ? 'true' : 'false';
+  }
+
+  function handleThemeChange(next: ThemePreference) {
+    setThemeOverride(next);
+    saveSettings({ ...stored.settings, theme: next });
+    document.documentElement.dataset.theme = resolveTheme(next);
+  }
+
+  function handleLightingChange(next: LightingMode) {
+    setLightingOverride(next);
+    saveSettings({ ...stored.settings, lightingMode: next });
+    document.documentElement.dataset.lighting = next;
   }
 
   function handleClearLocalReviewData() {
@@ -77,6 +100,39 @@ export function Settings() {
     <main className={styles.wrap}>
       <div className={styles.card}>
         <h1 className={styles.heading}>Settings</h1>
+
+        <section className={styles.section}>
+          <h2 className={styles.subheading}>Appearance</h2>
+          <label className={styles.selectRow}>
+            <span className={styles.toggleLabel}>Theme</span>
+            <select
+              className={styles.select}
+              value={theme}
+              aria-label="Theme"
+              onChange={(e) => handleThemeChange(e.target.value as ThemePreference)}
+            >
+              <option value="system">System</option>
+              <option value="light">Light</option>
+              <option value="dark">Dark</option>
+            </select>
+          </label>
+          <label className={styles.selectRow}>
+            <span className={styles.toggleLabel}>Emergency lighting</span>
+            <select
+              className={styles.select}
+              value={lightingMode}
+              aria-label="Emergency lighting"
+              onChange={(e) => handleLightingChange(e.target.value as LightingMode)}
+            >
+              <option value="standard">Standard Emergency Lighting</option>
+              <option value="reduced">Reduced Flashing Mode</option>
+            </select>
+          </label>
+          <p className={styles.toggleHint}>
+            Reduced Flashing Mode preserves all status information using steady lights, labels, icons, or
+            pulsing borders. See Instructions for the full flashing-light warning.
+          </p>
+        </section>
 
         <section className={styles.section}>
           <label className={styles.toggleRow}>
@@ -125,6 +181,8 @@ export function Settings() {
           )}
           {justCleared && <p className={styles.confirmation}>Cleared.</p>}
         </section>
+
+        <AudioSettings />
 
         <Link href="/dashboard" className={styles.backLink}>
           Back to dashboard

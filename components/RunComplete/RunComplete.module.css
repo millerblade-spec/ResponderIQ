@@ -1,0 +1,145 @@
+.wrap {
+  width: 100%;
+  max-width: 760px;
+  margin: 0 auto;
+  align-self: flex-start;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.card {
+  background-color: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: var(--panel-shadow);
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.title {
+  font-size: 1.4rem;
+  font-weight: 800;
+}
+
+.subtitle {
+  color: var(--fg-muted);
+  font-size: 0.95rem;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.label {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.required {
+  color: var(--status-caution);
+}
+
+.input,
+.textarea,
+.select {
+  background-color: var(--bg);
+  color: var(--fg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.55rem 0.7rem;
+  font-size: 0.9rem;
+  font-family: inherit;
+}
+
+.textarea {
+  min-height: 3.5rem;
+  resize: vertical;
+}
+
+.scale {
+  display: flex;
+  gap: 0.35rem;
+}
+
+.scaleButton {
+  width: 2.2rem;
+  height: 2.2rem;
+  border: 1px solid var(--border);
+  background-color: var(--bg);
+  color: var(--fg);
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.scaleButton.selected {
+  border-color: var(--status-info);
+  background-color: color-mix(in srgb, var(--status-info) 16%, transparent);
+  color: var(--status-info);
+}
+
+.yesno {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.primary {
+  align-self: flex-start;
+  background-color: var(--accent);
+  color: #14161a;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  padding: 0.65rem 1.3rem;
+  font-weight: 700;
+  font-size: 0.95rem;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.debriefSection {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.75rem 0.9rem;
+}
+
+.debriefLabel {
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+
+.debriefCoaching {
+  font-size: 0.9rem;
+  color: var(--fg-muted);
+  margin-top: 0.2rem;
+}
+
+.critical {
+  border: 1px solid var(--status-critical);
+  background-color: color-mix(in srgb, var(--status-critical) 10%, transparent);
+  color: var(--status-critical);
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  font-weight: 600;
+}
+
+.timeLines {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  font-size: 0.9rem;
+}
+
+.progressNote {
+  color: var(--fg-muted);
+  font-size: 0.85rem;
+}

@@ -1,4 +1,17 @@
+/*
+ * Theming (§1, §2, §3).
+ *
+ * :root holds the DARK theme — the approved existing dark appearance,
+ * preserved value-for-value. Light mode is layered on top via
+ * :root[data-theme='light'] and a prefers-color-scheme fallback, and it
+ * ONLY changes surface/border/hierarchy for readability. The operational
+ * color meanings (blue/green/yellow/orange/red/purple) are preserved in
+ * both themes — retuned only for contrast, never remapped.
+ */
 :root {
+  color-scheme: dark;
+
+  /* Base surfaces (dark — unchanged from the approved appearance). */
   --bg: #14161a;
   --surface: #1c1f26;
   --fg: #edeef0;
@@ -7,6 +20,83 @@
   --accent: #e0983f;
   --accent-hover: #ecab5c;
   --accent-muted: rgba(224, 152, 63, 0.12);
+  --panel-shadow: none;
+
+  /* Brand lockup (§1). RESPONDER white, IQ crimson orange, on a dark plate. */
+  --brand-responder: #ffffff;
+  --brand-iq: #e8492c;
+  --brand-plate-bg: #101216;
+  --brand-plate-border: #2e323c;
+
+  /* Operational color system (§3). Color is never the only signal — every
+     use in the UI is paired with a text label or icon. */
+  --status-info: #4a90d9; /* Blue: routine information / standard actions */
+  --status-safe: #3fae6b; /* Green: safe, available, confirmed, completed */
+  --status-pending: #e5c04b; /* Yellow: pending task / decision required */
+  --status-caution: #e0983f; /* Orange: caution / developing issue */
+  --status-critical: #e5484d; /* Red: critical threat / immediate danger */
+  --status-behavioral: #a978e0; /* Purple: behavioral / family / bystanders / scene dynamics */
+}
+
+/* Explicit light theme (§2). Darker, clearly-visible panel borders; stronger
+   hierarchy between page background, panel surfaces, borders and headers;
+   not sterile or grayscale — operational hues and the accent are preserved. */
+:root[data-theme='light'] {
+  color-scheme: light;
+
+  --bg: #eef1f5; /* page background: soft gray-blue, distinct from panels */
+  --surface: #ffffff; /* panel surface */
+  --fg: #171a20;
+  --fg-muted: #4f5866;
+  --border: #b4bece; /* DARKENED so panel boundaries read clearly */
+  --accent: #c1660f;
+  --accent-hover: #a4560b;
+  --accent-muted: rgba(193, 102, 15, 0.12);
+  --panel-shadow: 0 1px 2px rgba(23, 26, 32, 0.06), 0 2px 8px rgba(23, 26, 32, 0.06);
+
+  /* Brand plate stays dark so white RESPONDER is legible on a light page. */
+  --brand-responder: #ffffff;
+  --brand-iq: #d8431f;
+  --brand-plate-bg: #14161a;
+  --brand-plate-border: #14161a;
+
+  /* Operational colors, deepened for contrast on white — same meanings. */
+  --status-info: #1f6fc4;
+  --status-safe: #1c8a4b;
+  --status-pending: #8a6d0f; /* readable "gold" for text/borders on white */
+  --status-caution: #b25f16;
+  --status-critical: #c5343a;
+  --status-behavioral: #6f45bd;
+}
+
+/* System-following fallback for before JS resolves the preference: when the
+   user hasn't forced dark, honor a light OS. Explicit dark always wins. */
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme='dark']) {
+    color-scheme: light;
+
+    --bg: #eef1f5;
+    --surface: #ffffff;
+    --fg: #171a20;
+    --fg-muted: #4f5866;
+    --border: #b4bece;
+    --accent: #c1660f;
+    --accent-hover: #a4560b;
+    --accent-muted: rgba(193, 102, 15, 0.12);
+    --panel-shadow: 0 1px 2px rgba(23, 26, 32, 0.06), 0 2px 8px rgba(23, 26, 32, 0.06);
+
+    --brand-responder: #ffffff;
+    --brand-iq: #d8431f;
+    --brand-plate-bg: #14161a;
+    --brand-plate-border: #14161a;
+
+    --status-info: #1f6fc4;
+    --status-safe: #1c8a4b;
+    --status-pending: #8a6d0f;
+    --status-caution: #b25f16;
+    --status-critical: #c5343a;
+    --status-behavioral: #6f45bd;
+  }
 }
 
 * {
