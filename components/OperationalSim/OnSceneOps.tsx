@@ -66,10 +66,13 @@ export function OnSceneOps({
 
   // Fire-engine arrival audio sequence, on the shared clock, played once (§11).
   // (Clinical audio gating is owned by ClinicalPanel, which has the live state.)
+  // Capture the scheduled ids so they are cancelled on unmount, like every other
+  // scheduling site — the helper returns them for exactly this reason.
   useEffect(() => {
     if (!controller.ronArrived || arrivalAudioRef.current || !audioController) return;
     arrivalAudioRef.current = true;
-    scheduleEngineArrivalAudio(audioController, clock, 'engine');
+    const ids = scheduleEngineArrivalAudio(audioController, clock, 'engine');
+    return () => ids.forEach((id) => clock.cancel(id));
   }, [controller.ronArrived, audioController, clock]);
 
   function complete() {
