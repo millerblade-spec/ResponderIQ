@@ -2,7 +2,7 @@ import { DEFAULT_SIMULATOR_CONFIG, type SimulatorConfig } from '@/lib/engine/con
 import type { DifficultyLevel } from './types';
 
 /**
- * The differential countdown length (§8): 15 seconds at Orientation, 10 seconds
+ * The differential countdown length (§8): 20 seconds at Orientation, 15 seconds
  * at every level above it. Read from the approved typed config, never hard-coded.
  */
 export function differentialTimerSeconds(

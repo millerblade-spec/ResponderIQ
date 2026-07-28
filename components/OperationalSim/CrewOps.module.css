@@ -174,3 +174,119 @@
   padding-left: 0.7rem;
   margin: 0.3rem 0;
 }
+
+/* ---- Assignment drawer ---- */
+.drawer {
+  background-color: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+  padding: 1.25rem 1.35rem;
+  width: 100%;
+  max-width: 520px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.drawerHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.drawerTitle {
+  font-size: 1.05rem;
+  font-weight: 800;
+}
+
+.steps {
+  list-style: none;
+  display: flex;
+  gap: 0.4rem;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--fg-muted);
+}
+.steps li {
+  padding: 0.2rem 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+}
+.stepActive {
+  color: var(--accent);
+  border-color: var(--accent) !important;
+  font-weight: 700;
+}
+.stepDone {
+  color: var(--status-safe);
+  border-color: var(--status-safe) !important;
+}
+
+.linkButton {
+  align-self: flex-start;
+  background: none;
+  border: none;
+  color: var(--status-info);
+  font-family: inherit;
+  font-size: 0.82rem;
+  cursor: pointer;
+  padding: 0;
+}
+.linkButton:hover {
+  text-decoration: underline;
+}
+
+.review {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.85rem 1rem;
+  background-color: var(--bg);
+}
+.reviewTask {
+  font-weight: 800;
+  font-size: 0.95rem;
+  margin-bottom: 0.5rem;
+}
+.reviewReqs {
+  margin: 0;
+  padding-left: 1.1rem;
+  font-size: 0.83rem;
+  color: var(--fg-muted);
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.drawerFooter {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.6rem;
+  border-top: 1px solid var(--border);
+  padding-top: 0.85rem;
+}
+
+.confirmButton {
+  background-color: var(--accent);
+  color: #14161a;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  padding: 0.45rem 1rem;
+  font-weight: 700;
+  font-size: 0.85rem;
+  font-family: inherit;
+  cursor: pointer;
+}
+.confirmButton:hover {
+  background-color: var(--accent-hover);
+}
+
+.smallButton:focus-visible,
+.taskButton:focus-visible,
+.confirmButton:focus-visible,
+.linkButton:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}

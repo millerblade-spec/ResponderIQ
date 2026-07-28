@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { DEFAULT_SIMULATOR_CONFIG, type SimulatorConfig } from '@/lib/engine/config';
 import { MissionClock, startTicking, systemTimeSource } from '@/lib/engine/missionClock';
-import { EQUIPMENT_CATALOG, equipmentLabel } from '@/lib/opsim/equipment';
+import { EQUIPMENT_CATALOG } from '@/lib/opsim/equipment';
 import { differentialTimerSeconds } from '@/lib/opsim/difficulty';
 import {
   bls01Dispatch,
@@ -33,7 +33,6 @@ import {
   showEquipmentPrompt,
   toggleEquipment,
   confirmEquipment,
-  rankedTop,
 } from '@/lib/opsim/machine';
 import type { DifferentialChoice, DispatchInfo, DifficultyLevel } from '@/lib/opsim/types';
 import { loadSettings } from '@/lib/settings/storage';
@@ -41,6 +40,7 @@ import type { LightingMode } from '@/lib/settings/types';
 import { DifferentialModal } from './DifferentialModal';
 import { EquipmentPanel } from './EquipmentPanel';
 import styles from './OperationalSim.module.css';
+import shell from './Console.module.css';
 
 function subscribeToStorage(callback: () => void) {
   window.addEventListener('storage', callback);
@@ -97,6 +97,10 @@ export function OperationalSim({
 
   const scheduledRef = useRef<number[]>([]);
   const finalizeHandledRef = useRef(false);
+  // Lets the persistent top bar's "End Scenario" trigger the same completion path
+  // OnSceneOps owns (it holds the captured sub-state). Null until on scene.
+  const endRef = useRef<(() => void) | null>(null);
+  const [confirmEnd, setConfirmEnd] = useState(false);
 
   // The 3-second dispatch alert, played once when the console mounts (§7, §11).
   useEffect(() => {
@@ -159,91 +163,95 @@ export function OperationalSim({
     return <RunComplete facts={completedFacts} />;
   }
 
+  const onScene = state.stage === 'ready';
+
   return (
-    <main>
-      <div className={styles.wrap}>
-        <div className={styles.statusBar}>
-          <span className={styles.unit}>{dispatch.unit}</span>
-          <span className={styles.radio}>Radio: {dispatch.radioChannel}</span>
-          {responding ? (
-            <span className={`${styles.statusBadge} ${styles.responding}`}>
-              <span className={styles.badgeIcon} aria-hidden="true">
-                ▲
-              </span>
-              <span>RESPONDING · CODE 3</span>
-            </span>
-          ) : (
-            <span className={`${styles.statusBadge} ${styles.onScene}`}>
-              <span className={styles.badgeIcon} aria-hidden="true">
-                ✓
-              </span>
-              <span>ON SCENE</span>
-            </span>
-          )}
-          <span className={styles.clock}>
-            <span className={styles.clockLabel}>Mission clock</span>
-            {formatSeconds(displaySeconds)}
+    <main className={shell.shell}>
+      <header className={shell.topbar}>
+        <span className={shell.brand}>
+          <span className={shell.brandResponder}>RESPONDER</span>
+          <span className={shell.brandIq}>IQ</span>
+        </span>
+        <span className={shell.unit}>{dispatch.unit}</span>
+        <span className={shell.scenarioName}>{dispatch.callType}</span>
+
+        {responding ? (
+          <span className={`${shell.statusBadge} ${shell.responding}`}>
+            <span aria-hidden="true">▲</span>
+            <span>RESPONDING · CODE 3</span>
           </span>
-        </div>
-
-        <AudioHud />
-
+        ) : (
+          <span className={`${shell.statusBadge} ${shell.onScene}`}>
+            <span aria-hidden="true">✓</span>
+            <span>ON SCENE</span>
+          </span>
+        )}
         {responding && dispatch.responseMode === 'code_3' && (
-          <div
-            className={`${styles.beacons} ${reducedFlashing ? styles.reduced : ''}`}
-            role="status"
-            aria-label="Responding Code 3"
-          >
-            <span className={styles.beaconLights} aria-hidden="true">
-              <span className={`${styles.beacon} ${styles.flash1}`} />
-              <span className={`${styles.beacon} ${styles.flash2}`} />
-            </span>
-            <span className={styles.beaconLabel}>CODE 3 · RESPONDING</span>
-            <span className={styles.beaconMode}>
-              {reducedFlashing ? 'Reduced Flashing Mode' : 'Standard Emergency Lighting'}
-            </span>
-          </div>
+          <span className={shell.lightingChip}>
+            {reducedFlashing ? 'Reduced flashing' : 'Emergency lighting'}
+          </span>
         )}
 
-        <section className={styles.panel} aria-labelledby="dispatch-title">
-          <h1 id="dispatch-title" className={styles.panelTitle}>
-            Dispatch — {dispatch.callType}
-          </h1>
-          <div className={styles.dispatchMeta}>
-            <span>Unit: {dispatch.unit}</span>
-            <span>Channel: {dispatch.radioChannel}</span>
-            <span>Response: Code 3</span>
-            <span>{dispatch.location}</span>
+        <span className={shell.topSpacer} />
+
+        <span className={shell.clock}>
+          <span className={shell.clockLabel}>Mission clock</span>
+          {formatSeconds(displaySeconds)}
+        </span>
+        <span className={shell.audioSlot}>
+          <AudioHud />
+        </span>
+        <button
+          type="button"
+          className={shell.endButton}
+          disabled={!onScene}
+          onClick={() => {
+            if (!confirmEnd) {
+              setConfirmEnd(true);
+              return;
+            }
+            endRef.current?.();
+          }}
+        >
+          {confirmEnd ? 'Confirm end?' : 'End Scenario'}
+        </button>
+      </header>
+
+      <div className={shell.body}>
+        {!onScene ? (
+          <div className={shell.dispatchStage}>
+            {responding && dispatch.responseMode === 'code_3' && (
+              <div
+                className={`${styles.beacons} ${reducedFlashing ? styles.reduced : ''}`}
+                role="status"
+                aria-label="Responding Code 3"
+              >
+                <span className={styles.beaconLights} aria-hidden="true">
+                  <span className={`${styles.beacon} ${styles.flash1}`} />
+                  <span className={`${styles.beacon} ${styles.flash2}`} />
+                </span>
+                <span className={styles.beaconLabel}>CODE 3 · RESPONDING</span>
+                <span className={styles.beaconMode}>
+                  {reducedFlashing ? 'Reduced Flashing Mode' : 'Standard Emergency Lighting'}
+                </span>
+              </div>
+            )}
+
+            <section className={styles.panel} aria-labelledby="dispatch-title">
+              <h1 id="dispatch-title" className={styles.panelTitle}>
+                Dispatch — {dispatch.callType}
+              </h1>
+              <div className={styles.dispatchMeta}>
+                <span>Unit: {dispatch.unit}</span>
+                <span>Channel: {dispatch.radioChannel}</span>
+                <span>Response: Code 3</span>
+                <span>{dispatch.location}</span>
+              </div>
+              <p className={styles.dispatchNarrative}>{dispatch.narrative}</p>
+              {!state.toneComplete && <p className={styles.toneNote}>▶ Dispatch alert tone…</p>}
+            </section>
           </div>
-          <p className={styles.dispatchNarrative}>{dispatch.narrative}</p>
-          {!state.toneComplete && <p className={styles.toneNote}>▶ Dispatch alert tone…</p>}
-        </section>
-
-        {state.stage === 'ready' && (
-          <section className={styles.panel} aria-label="On-scene summary">
-            <h2 className={styles.panelTitle}>On scene</h2>
-            <p className={styles.instruction}>
-              Preparing for (top {config.differential.rankedCount}):{' '}
-              {rankedTop(state, config)
-                .map((id) => choices.find((c) => c.id === id)?.label ?? id)
-                .join(' · ') || '—'}
-            </p>
-            <p className={styles.instruction}>Equipment on scene:</p>
-            <div className={styles.summary}>
-              {state.equipment.selected.length === 0 ? (
-                <span className={styles.hint}>Nothing brought in — everything is still on Medic 3.</span>
-              ) : (
-                state.equipment.selected.map((id) => (
-                  <span key={id} className={styles.summaryTag}>
-                    {equipmentLabel(id)}
-                  </span>
-                ))
-              )}
-            </div>
-          </section>
-        )}
-
-        {state.stage === 'ready' && (
+        ) : (
           <OnSceneOps
             engines={engines}
             equipmentOnScene={state.equipment.selected}
@@ -257,6 +265,8 @@ export function OperationalSim({
             scenarioId={scenarioId}
             runDifficulty={level}
             onComplete={setCompletedFacts}
+            now={displaySeconds}
+            endRef={endRef}
           />
         )}
       </div>

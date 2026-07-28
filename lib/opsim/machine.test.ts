@@ -117,11 +117,11 @@ describe('opsim machine — differential challenge (§8)', () => {
 });
 
 describe('opsim differential timer resolves from approved config (§8)', () => {
-  it('is 15 seconds at Orientation', () => {
-    expect(differentialTimerSeconds('orientation')).toBe(15);
+  it('is 20 seconds at Orientation', () => {
+    expect(differentialTimerSeconds('orientation')).toBe(20);
   });
-  it('is 10 seconds above Orientation', () => {
-    expect(differentialTimerSeconds('advanced')).toBe(10);
+  it('is 15 seconds above Orientation', () => {
+    expect(differentialTimerSeconds('advanced')).toBe(15);
   });
 });
 

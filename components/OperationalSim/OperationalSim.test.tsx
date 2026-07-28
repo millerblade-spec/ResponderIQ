@@ -46,7 +46,7 @@ describe('OperationalSim — dispatch & Code 3 (§7)', () => {
   it('shows Medic 3 on EMS 2 and the dispatch tone note before the tone completes', () => {
     renderSim();
     expect(screen.getByText('Medic 3')).toBeInTheDocument();
-    expect(screen.getByText(/Radio: EMS 2/)).toBeInTheDocument();
+    expect(screen.getByText(/Channel: EMS 2/)).toBeInTheDocument();
     expect(screen.getByText(/dispatch alert tone/i)).toBeInTheDocument();
   });
 
@@ -149,21 +149,21 @@ describe('OperationalSim — differential challenge (§8)', () => {
 });
 
 describe('OperationalSim — timers time out and save partial work (§8)', () => {
-  it('Orientation times out at 15 seconds after the differential opens (tone 3s + 15s)', () => {
+  it('Orientation times out at 20 seconds after the differential opens (tone 3s + 20s)', () => {
     const { advance } = renderSim({ level: 'orientation' });
+    advance(3); // opens at t=3
+    advance(19); // t=22, still open
+    expect(screen.getByRole('dialog', { name: /what are you preparing for/i })).toBeInTheDocument();
+    advance(1); // t=23 -> timeout
+    expect(screen.queryByRole('dialog', { name: /what are you preparing for/i })).toBeNull();
+  });
+
+  it('Above Orientation times out at 15 seconds (tone 3s + 15s)', () => {
+    const { advance } = renderSim({ level: 'advanced' });
     advance(3); // opens at t=3
     advance(14); // t=17, still open
     expect(screen.getByRole('dialog', { name: /what are you preparing for/i })).toBeInTheDocument();
     advance(1); // t=18 -> timeout
-    expect(screen.queryByRole('dialog', { name: /what are you preparing for/i })).toBeNull();
-  });
-
-  it('Above Orientation times out at 10 seconds (tone 3s + 10s)', () => {
-    const { advance } = renderSim({ level: 'advanced' });
-    advance(3); // opens at t=3
-    advance(9); // t=12, still open
-    expect(screen.getByRole('dialog', { name: /what are you preparing for/i })).toBeInTheDocument();
-    advance(1); // t=13 -> timeout
     expect(screen.queryByRole('dialog', { name: /what are you preparing for/i })).toBeNull();
   });
 
@@ -172,7 +172,7 @@ describe('OperationalSim — timers time out and save partial work (§8)', () =>
     advance(3);
     const buttons = within(diffGroup()).getAllByRole('button');
     [0, 1].forEach((i) => fireEvent.click(buttons[i])); // only two
-    advance(15); // timeout at t=18
+    advance(20); // timeout at t=23
     expect(screen.queryByRole('dialog', { name: /what are you preparing for/i })).toBeNull();
     expect(screen.getByText('ON SCENE')).toBeInTheDocument(); // arrived, did not get stuck
   });
@@ -219,9 +219,11 @@ describe('OperationalSim — arrival & equipment (§7, §9)', () => {
     fireEvent.click(within(group).getByRole('button', { name: /als bag/i }));
     fireEvent.click(screen.getByRole('button', { name: /bring these in/i }));
 
-    const summary = screen.getByRole('region', { name: /on-scene summary/i });
-    expect(within(summary).getByText('ALS Bag')).toBeInTheDocument();
-    expect(within(summary).queryByText('Portable Suction')).toBeNull(); // still on Medic 3
+    const onSceneEquip = screen.getByRole('group', { name: /equipment on scene/i });
+    expect(within(onSceneEquip).getByText('ALS Bag')).toBeInTheDocument();
+    expect(within(onSceneEquip).queryByText('Portable Suction')).toBeNull(); // not brought in
+    const onTruck = screen.getByRole('group', { name: /still on medic 3/i });
+    expect(within(onTruck).getByText('Portable Suction')).toBeInTheDocument(); // still on Medic 3
   });
 });
 
