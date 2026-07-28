@@ -46,7 +46,7 @@ describe('OperationalSim — dispatch & Code 3 (§7)', () => {
   it('shows Medic 3 on EMS 2 and the dispatch tone note before the tone completes', () => {
     renderSim();
     expect(screen.getByText('Medic 3')).toBeInTheDocument();
-    expect(screen.getByText(/Radio: EMS 2/)).toBeInTheDocument();
+    expect(screen.getByText(/Channel: EMS 2/)).toBeInTheDocument();
     expect(screen.getByText(/dispatch alert tone/i)).toBeInTheDocument();
   });
 
@@ -219,9 +219,11 @@ describe('OperationalSim — arrival & equipment (§7, §9)', () => {
     fireEvent.click(within(group).getByRole('button', { name: /als bag/i }));
     fireEvent.click(screen.getByRole('button', { name: /bring these in/i }));
 
-    const summary = screen.getByRole('region', { name: /on-scene summary/i });
-    expect(within(summary).getByText('ALS Bag')).toBeInTheDocument();
-    expect(within(summary).queryByText('Portable Suction')).toBeNull(); // still on Medic 3
+    const onSceneEquip = screen.getByRole('group', { name: /equipment on scene/i });
+    expect(within(onSceneEquip).getByText('ALS Bag')).toBeInTheDocument();
+    expect(within(onSceneEquip).queryByText('Portable Suction')).toBeNull(); // not brought in
+    const onTruck = screen.getByRole('group', { name: /still on medic 3/i });
+    expect(within(onTruck).getByText('Portable Suction')).toBeInTheDocument(); // still on Medic 3
   });
 });
 
