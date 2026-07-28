@@ -149,21 +149,21 @@ describe('OperationalSim — differential challenge (§8)', () => {
 });
 
 describe('OperationalSim — timers time out and save partial work (§8)', () => {
-  it('Orientation times out at 15 seconds after the differential opens (tone 3s + 15s)', () => {
+  it('Orientation times out at 20 seconds after the differential opens (tone 3s + 20s)', () => {
     const { advance } = renderSim({ level: 'orientation' });
+    advance(3); // opens at t=3
+    advance(19); // t=22, still open
+    expect(screen.getByRole('dialog', { name: /what are you preparing for/i })).toBeInTheDocument();
+    advance(1); // t=23 -> timeout
+    expect(screen.queryByRole('dialog', { name: /what are you preparing for/i })).toBeNull();
+  });
+
+  it('Above Orientation times out at 15 seconds (tone 3s + 15s)', () => {
+    const { advance } = renderSim({ level: 'advanced' });
     advance(3); // opens at t=3
     advance(14); // t=17, still open
     expect(screen.getByRole('dialog', { name: /what are you preparing for/i })).toBeInTheDocument();
     advance(1); // t=18 -> timeout
-    expect(screen.queryByRole('dialog', { name: /what are you preparing for/i })).toBeNull();
-  });
-
-  it('Above Orientation times out at 10 seconds (tone 3s + 10s)', () => {
-    const { advance } = renderSim({ level: 'advanced' });
-    advance(3); // opens at t=3
-    advance(9); // t=12, still open
-    expect(screen.getByRole('dialog', { name: /what are you preparing for/i })).toBeInTheDocument();
-    advance(1); // t=13 -> timeout
     expect(screen.queryByRole('dialog', { name: /what are you preparing for/i })).toBeNull();
   });
 
@@ -172,7 +172,7 @@ describe('OperationalSim — timers time out and save partial work (§8)', () =>
     advance(3);
     const buttons = within(diffGroup()).getAllByRole('button');
     [0, 1].forEach((i) => fireEvent.click(buttons[i])); // only two
-    advance(15); // timeout at t=18
+    advance(20); // timeout at t=23
     expect(screen.queryByRole('dialog', { name: /what are you preparing for/i })).toBeNull();
     expect(screen.getByText('ON SCENE')).toBeInTheDocument(); // arrived, did not get stuck
   });

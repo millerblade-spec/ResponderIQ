@@ -82,8 +82,8 @@ export interface SimulatorConfig {
 export const DEFAULT_SIMULATOR_CONFIG: SimulatorConfig = {
   timing: {
     dispatchToneSeconds: 3,
-    differentialTimerSecondsOrientation: 15,
-    differentialTimerSecondsAboveOrientation: 10,
+    differentialTimerSecondsOrientation: 20,
+    differentialTimerSecondsAboveOrientation: 15,
     equipmentPromptDelaySeconds: 3,
     fireOfficerQuestionDelaySeconds: 5,
     policeArrivalSeconds: 15,

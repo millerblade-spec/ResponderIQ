@@ -57,7 +57,7 @@ cleanup fix), `scripts/screenshots-final-gaps.mjs`, `scripts/screenshots-admin.m
 
 - Branding (RESPONDER white / IQ crimson orange), light/dark themes, Instructions + color legend.
 - Truck Check / Unit Check-Off with detailed bag/monitor contents and the five-question challenge.
-- Dispatch → Code 3 → timed differential (Orientation 15s / above 10s) → equipment selection (45s retrieval for anything left behind).
+- Dispatch → Code 3 → timed differential (Orientation 20s / above 15s) → equipment selection (45s retrieval for anything left behind).
 - Windshield assessment, scene lighting revealing hazards, staging, police clearance (15s + 10s), Safe/Not-Safe to Enter, ballistic PPE prompt.
 - Fire-engine arrival, fire officer offer (5s after Ron), personnel Awaiting Assignment, Partner Ron assignment, task reassignment, 45s equipment retrieval, two-engine MVC, Clear Engine (blocked/successful), additional-resource requests.
 - Scene Dynamics: distractions that escalate (10s then every 5s), Being Managed, Resolved.
