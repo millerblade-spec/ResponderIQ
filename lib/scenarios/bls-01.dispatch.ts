@@ -1,5 +1,5 @@
 import { RADIO_CHANNEL, UNIT_CALLSIGN } from '@/lib/opsim/constants';
-import type { DifferentialChoice, DispatchInfo } from '@/lib/opsim/types';
+import type { DifferentialChoice, DispatchInfo, ParkingOption } from '@/lib/opsim/types';
 import type { SceneConfig } from '@/lib/opsim/scene';
 import type { DifficultyName } from '@/lib/opsim/dynamics';
 import { bls01 } from './bls-01';
@@ -18,6 +18,37 @@ export const bls01Distractions: readonly ScenarioDistraction[] = [
 ];
 
 export const bls01DynamicsDifficulty: DifficultyName = 'basic';
+
+/**
+ * Where to park, relative to the apartment building — asked on arrival rather
+ * than deriving the windshield view automatically. Each option is a real
+ * logistics trade-off; none is an instant fail.
+ */
+export const bls01ParkingOptions: readonly ParkingOption[] = [
+  {
+    id: 'front_entrance',
+    label: 'Right in front of the main entrance',
+    detail: 'Shortest carry to the door, but the truck blocks the narrow street.',
+  },
+  {
+    id: 'across_street',
+    label: 'Across the street, nose out',
+    detail: 'Short walk over, clear exit path when it’s time to load and go.',
+  },
+  {
+    id: 'down_block',
+    label: 'Down the block in the open stretch',
+    detail: 'Completely out of the way — but a long carry back with a loaded stretcher.',
+  },
+];
+
+/**
+ * Seconds after Medic 3 goes on scene before the fire engine arrives. At this
+ * base/BLS difficulty fire arrives WITH the medics (0s). A future
+ * higher-difficulty variant makes the medics work short-handed first by setting
+ * this to ~15–30 — adjust the value; nothing else needs to change.
+ */
+export const bls01FireArrivalDelaySeconds = 0;
 
 /** Advanced variant for demonstrating several competing distractions at once. */
 export const bls01AdvancedDistractions: readonly ScenarioDistraction[] = [
@@ -62,18 +93,28 @@ export const bls01Differentials: readonly DifferentialChoice[] = [
 ];
 
 /**
- * The normal BLS-01 scene (§15–§17): a dusk fall near a roadway. Low visibility
- * plus the roadway motivate the scene-lights prompt; no staging/security. Scene
- * lights reveal a couple of otherwise-hidden ground hazards.
+ * The normal BLS-01 scene (§15–§17): a nighttime residential fall at a walkup
+ * apartment building. The windshield view builds the "is this scene safe"
+ * judgment from concrete reads: darkness, weather, road condition (potholes —
+ * poor upkeep), lawn condition and cans/litter (neglect indicators), and a
+ * group of people near the entrance. Darkness motivates the scene-lights
+ * prompt (the right call here is yes); lights reveal ground hazards that were
+ * invisible in the dark.
  */
 export const bls01Scene: SceneConfig = {
   dispatchStaging: false,
   securityThreat: false,
   lowVisibility: true,
-  nearRoadway: true,
+  nearRoadway: false,
   weatherRequiresGear: false,
-  presentFactorIds: ['dusk', 'unsafe_shoulder', 'heavy_traffic', 'bystanders_surrounding_the_patient'],
-  lightRevealedFactorIds: ['standing_water', 'potholes'],
+  presentFactorIds: [
+    'night',
+    'potholes',
+    'unkempt_lawn',
+    'cans_and_litter_in_the_yard',
+    'group_of_people_near_the_entrance',
+  ],
+  lightRevealedFactorIds: ['standing_water', 'broken_glass'],
 };
 
 /**

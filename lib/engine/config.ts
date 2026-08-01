@@ -20,6 +20,12 @@ export interface SimulatorTiming {
   readonly differentialTimerSecondsOrientation: number;
   /** §8 Differential countdown at every level above Orientation. */
   readonly differentialTimerSecondsAboveOrientation: number;
+  /**
+   * §8 Differential countdown the very first time a learner ever reaches the
+   * differential page (tracked per-user, not per-session — see
+   * lib/opsim/firstVisit.ts). Extra time for genuine first exposure only.
+   */
+  readonly differentialTimerSecondsFirstVisit: number;
   /** §9 Delay after the differential process before Ron asks the equipment question. */
   readonly equipmentPromptDelaySeconds: number;
   /** §11 Delay after an engine arrives before the fire officer approaches and asks to help. */
@@ -82,8 +88,9 @@ export interface SimulatorConfig {
 export const DEFAULT_SIMULATOR_CONFIG: SimulatorConfig = {
   timing: {
     dispatchToneSeconds: 3,
-    differentialTimerSecondsOrientation: 15,
+    differentialTimerSecondsOrientation: 20,
     differentialTimerSecondsAboveOrientation: 10,
+    differentialTimerSecondsFirstVisit: 25,
     equipmentPromptDelaySeconds: 3,
     fireOfficerQuestionDelaySeconds: 5,
     policeArrivalSeconds: 15,

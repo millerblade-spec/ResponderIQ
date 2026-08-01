@@ -31,25 +31,41 @@ describe('SceneSafety — windshield & clinical lock (§15, §19)', () => {
   it('opens with the windshield assessment and clinical actions locked', () => {
     renderScene();
     expect(screen.getByText(/are we safe to enter/i)).toBeInTheDocument();
-    expect(screen.getByText('Dusk')).toBeInTheDocument();
+    // The new windshield content (fix #4): darkness, road condition, lawn,
+    // debris/cans, and the group of people — all feeding "is the scene safe".
+    expect(screen.getByText('Night')).toBeInTheDocument();
+    expect(screen.getByText('Potholes')).toBeInTheDocument();
+    expect(screen.getByText('Unkempt lawn')).toBeInTheDocument();
+    expect(screen.getByText('Cans and litter in the yard')).toBeInTheDocument();
+    expect(screen.getByText('Group of people near the entrance')).toBeInTheDocument();
     expect(screen.getByText(/clinical assessment stays locked/i)).toBeInTheDocument();
     // ABCs unknown before contact.
     expect(screen.getAllByText('Unknown').length).toBeGreaterThanOrEqual(4);
     expect(screen.getByText('Not established')).toBeInTheDocument();
   });
 
-  it('prompts for scene lights and reveals hidden hazards when they are turned on (§17)', () => {
+  it('asks the dark-scene lights question and reveals hidden hazards when lights go on (§17, fix #5)', () => {
     renderScene();
-    expect(screen.getByText(/want the scene lights on/i)).toBeInTheDocument();
+    expect(screen.getByText(/do you think we need to add scene lights/i)).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: /turn scene lights on/i }));
     expect(screen.getByText(/standing water/i)).toBeInTheDocument();
   });
 
-  it('unlocks clinical only after Safe to Enter → exit → patient contact (§19)', () => {
+  it('unlocks clinical only after Safe to Enter → equipment → stairs → floor read → contact (§19, fixes #6, #10)', () => {
     renderScene();
     fireEvent.click(screen.getByRole('button', { name: /^safe to enter$/i }));
     fireEvent.click(screen.getByRole('button', { name: /exit medic 3/i }));
-    fireEvent.click(screen.getByRole('button', { name: /establish patient contact/i }));
+    // Stepping out triggers Ron's equipment question (fix #6).
+    expect(screen.getByText(/what do you want to bring in/i)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /stair chair/i }));
+    fireEvent.click(screen.getByRole('button', { name: /bring these in/i }));
+    expect(screen.queryByText(/clinical assessment is now available/i)).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: /head up the stairs/i }));
+    // The floor read (fix #10): lighting and the open door, explained by the son.
+    expect(screen.getByRole('button', { name: /check the hallway lighting/i })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /note the open door/i }));
+    expect(screen.getByText(/didn’t shut it behind him/i)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /enter the apartment/i }));
     expect(screen.getByText(/clinical assessment is now available/i)).toBeInTheDocument();
     expect(screen.getByText('Established')).toBeInTheDocument();
   });

@@ -14,10 +14,12 @@ describe('DEFAULT_SIMULATOR_CONFIG — approved fixed values (§29)', () => {
   const t = DEFAULT_SIMULATOR_CONFIG.timing;
 
   it('dispatch tone is 3 seconds', () => expect(t.dispatchToneSeconds).toBe(3));
-  it('differential timer is 15 seconds at Orientation', () =>
-    expect(t.differentialTimerSecondsOrientation).toBe(15));
+  it('differential timer is 20 seconds at Orientation (BLS-01 rebuild fix #1)', () =>
+    expect(t.differentialTimerSecondsOrientation).toBe(20));
   it('differential timer is 10 seconds above Orientation', () =>
     expect(t.differentialTimerSecondsAboveOrientation).toBe(10));
+  it('differential timer is 25 seconds for a learner’s very first visit (fix #1)', () =>
+    expect(t.differentialTimerSecondsFirstVisit).toBe(25));
   it('equipment prompt delay is 3 seconds', () => expect(t.equipmentPromptDelaySeconds).toBe(3));
   it('fire officer question delay is 5 seconds after engine arrival', () =>
     expect(t.fireOfficerQuestionDelaySeconds).toBe(5));

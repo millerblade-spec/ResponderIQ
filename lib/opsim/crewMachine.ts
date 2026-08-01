@@ -331,6 +331,17 @@ export function isLastFireResource(state: CrewState, apparatusId: string): boole
   return others.length === 0;
 }
 
+/**
+ * Delivers equipment to the scene in bulk — the crew carrying in what the
+ * learner chose at the truck (§9). Idempotent per item; retrieval tasks remain
+ * the only other way equipment becomes available.
+ */
+export function addEquipmentOnScene(state: CrewState, equipmentIds: readonly string[]): CrewState {
+  const additions = equipmentIds.filter((id) => !state.equipmentOnScene.includes(id));
+  if (additions.length === 0) return state;
+  return { ...state, equipmentOnScene: [...state.equipmentOnScene, ...additions] };
+}
+
 export function requestResource(state: CrewState, resourceId: string): CrewState {
   if (state.resourceRequests.includes(resourceId)) return state;
   return { ...state, resourceRequests: [...state.resourceRequests, resourceId] };

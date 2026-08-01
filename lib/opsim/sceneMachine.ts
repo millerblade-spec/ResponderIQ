@@ -14,10 +14,25 @@ export type SceneSafetyStage =
   | 'windshield' // reviewing what's visible from the unit; not safe to move yet
   | 'staging' // staged (ordered or by choice); waiting for it to be safe/cleared
   | 'safe_to_enter' // declared safe or cleared — may exit the unit
-  | 'exited' // out of the unit, approaching
+  | 'equipment' // at the back of the unit — "what do you want to bring in?" (§9)
+  | 'exited' // out of the unit with the chosen gear, approaching
+  | 'floor_arrival' // up the stairs, on the patient's floor — quick read before entering
   | 'patient_contact'; // at the patient — clinical actions unlock here
 
 export type AbcdUnknown = 'unknown' | 'assessed';
+
+/** Equipment chosen while stepping off the unit (§9). Kept here because the moment belongs to the scene flow. */
+export interface SceneEquipmentState {
+  readonly promptShown: boolean;
+  readonly selected: readonly string[];
+  readonly confirmed: boolean;
+}
+
+/** The quick read on the patient's floor (fix #10): lighting, and the open apartment door. */
+export interface FloorArrivalState {
+  readonly lightingNoted: boolean;
+  readonly doorNoted: boolean;
+}
 
 export interface SceneSafetyState {
   readonly stage: SceneSafetyStage;
@@ -45,6 +60,8 @@ export interface SceneSafetyState {
   };
   /** Extra factors that became visible after scene lights came on (§17). */
   readonly revealedFactorIds: readonly string[];
+  readonly equipment: SceneEquipmentState;
+  readonly floor: FloorArrivalState;
   readonly patientContact: 'not_established' | 'established';
 }
 
@@ -73,13 +90,21 @@ export function createSceneSafetyState(config: SceneConfig): SceneSafetyState {
       geared: false,
     },
     revealedFactorIds: [],
+    equipment: { promptShown: false, selected: [], confirmed: false },
+    floor: { lightingNoted: false, doorNoted: false },
     patientContact: 'not_established',
   };
 }
 
 /** Whether the crew may safely enter: either declared safe, or police cleared the scene (§16). */
 export function isClearedToEnter(state: SceneSafetyState): boolean {
-  return state.stage === 'safe_to_enter' || state.stage === 'exited' || state.stage === 'patient_contact';
+  return (
+    state.stage === 'safe_to_enter' ||
+    state.stage === 'equipment' ||
+    state.stage === 'exited' ||
+    state.stage === 'floor_arrival' ||
+    state.stage === 'patient_contact'
+  );
 }
 
 /**
@@ -175,15 +200,67 @@ export function enterAfterStaging(state: SceneSafetyState, config: SceneConfig):
   return { ...state, stage: 'safe_to_enter' };
 }
 
-/** Exit the unit — only once it is safe to enter (§19). */
+/**
+ * Exit the unit — only once it is safe to enter (§19). Stepping off is when the
+ * partner asks "what do you want to bring in?" (§9), so this lands on the
+ * equipment stage rather than straight into the approach.
+ */
 export function exitUnit(state: SceneSafetyState): SceneSafetyState {
   if (!isClearedToEnter(state) || state.stage !== 'safe_to_enter') return state;
-  return { ...state, stage: 'exited' };
+  return {
+    ...state,
+    stage: 'equipment',
+    equipment: { ...state.equipment, promptShown: true },
+  };
 }
 
-/** Establish patient contact — only after exiting the unit. Unlocks clinical actions (§19). */
-export function establishPatientContact(state: SceneSafetyState): SceneSafetyState {
+/** Toggles a piece of equipment in/out of what the crew carries in (§9). */
+export function toggleSceneEquipment(state: SceneSafetyState, id: string): SceneSafetyState {
+  if (state.stage !== 'equipment' || state.equipment.confirmed) return state;
+  const selected = state.equipment.selected.includes(id)
+    ? state.equipment.selected.filter((x) => x !== id)
+    : [...state.equipment.selected, id];
+  return { ...state, equipment: { ...state.equipment, selected } };
+}
+
+/**
+ * Confirms what the crew carries in and starts the approach. Anything left on
+ * Medic 3 later costs a ~45s walk-back by whoever goes to get it (§9) — a
+ * realistic consequence, not a penalty.
+ */
+export function confirmSceneEquipment(state: SceneSafetyState): SceneSafetyState {
+  if (state.stage !== 'equipment') return state;
+  return {
+    ...state,
+    stage: 'exited',
+    equipment: { ...state.equipment, confirmed: true },
+  };
+}
+
+/** Up the stairs to the patient's floor — the quick pre-entry read (fix #10). */
+export function reachPatientFloor(state: SceneSafetyState): SceneSafetyState {
   if (state.stage !== 'exited') return state;
+  return { ...state, stage: 'floor_arrival' };
+}
+
+/** The learner notes how well the hallway/landing is lit (fix #10). */
+export function noteFloorLighting(state: SceneSafetyState): SceneSafetyState {
+  if (state.stage !== 'floor_arrival') return state;
+  return { ...state, floor: { ...state.floor, lightingNoted: true } };
+}
+
+/**
+ * The learner notes the open apartment door and squares it with the story: the
+ * son came down to meet the crew and didn't shut it behind him (fix #9, #10).
+ */
+export function noteDoorOpen(state: SceneSafetyState): SceneSafetyState {
+  if (state.stage !== 'floor_arrival') return state;
+  return { ...state, floor: { ...state.floor, doorNoted: true } };
+}
+
+/** Establish patient contact — inside the apartment (§19, fix #9). Unlocks clinical actions. */
+export function establishPatientContact(state: SceneSafetyState): SceneSafetyState {
+  if (state.stage !== 'floor_arrival') return state;
   return { ...state, stage: 'patient_contact', patientContact: 'established' };
 }
 

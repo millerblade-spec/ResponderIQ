@@ -139,6 +139,10 @@ export function ClinicalPanel({
   const [pick, setPick] = useState<string | null>(null); // actionId awaiting a responder
   const [blocked, setBlocked] = useState<Record<string, string>>({});
   const [region, setRegion] = useState<string>('extremities');
+  // Calming is delegated by design (fix #11): anyone EXCEPT the lead medic.
+  const [calmPickerOpen, setCalmPickerOpen] = useState(false);
+  const [calmDelegatedTo, setCalmDelegatedTo] = useState<string | null>(null);
+  const [calmBlocked, setCalmBlocked] = useState('');
   const scheduledRef = useRef<number[]>([]);
   const deteriorationRef = useRef(false);
   const audioController = useAudioOptional()?.controller;
@@ -254,12 +258,92 @@ export function ClinicalPanel({
 
       {unlocked && (
         <>
+          {/* Patient rapport (fix #11): calming him and explaining what's
+              happening is delegated — the lead medic's hands stay on the
+              assessment. Only crew OTHER than the lead can take it. */}
+          <div className={styles.section}>
+            <div className={styles.sectionHeader}>
+              <span className={styles.sectionTitle}>Calm &amp; explain</span>
+              {calmDelegatedTo ? (
+                <span className={`${styles.stateChip} ${styles.inProgress}`}>Being handled</span>
+              ) : (
+                <span className={styles.stateChip}>Not Started</span>
+              )}
+            </div>
+            {calmDelegatedTo ? (
+              <div className={styles.findings}>
+                <div className={styles.finding}>
+                  {controller.crew.responders[calmDelegatedTo]?.name ?? 'A crew member'} is with him — keeping
+                  him calm and explaining what’s happening while you work.
+                </div>
+              </div>
+            ) : (
+              <div>
+                <div className={styles.actions}>
+                  <button type="button" className={styles.button} onClick={() => setCalmPickerOpen((v) => !v)}>
+                    Have someone calm him &amp; explain what’s happening
+                  </button>
+                </div>
+                {calmPickerOpen && (
+                  <div className={styles.picker} aria-label="Choose who calms the patient">
+                    <div className={styles.actions}>
+                      {freeResponders
+                        .filter((r) => r.role !== 'lead_medic')
+                        .map((r) => (
+                          <button
+                            key={r.id}
+                            type="button"
+                            className={styles.button}
+                            onClick={() => {
+                              const rejected = controller.assign(r.id, 'calm_patient_explain');
+                              if (rejected) {
+                                setCalmBlocked('That responder is already busy — pick someone else.');
+                                return;
+                              }
+                              setCalmDelegatedTo(r.id);
+                              setCalmPickerOpen(false);
+                              setCalmBlocked('');
+                            }}
+                          >
+                            {r.name}
+                          </button>
+                        ))}
+                      <button type="button" className={styles.button} onClick={() => setCalmPickerOpen(false)}>
+                        Cancel
+                      </button>
+                    </div>
+                    <p className={opStyles.hint}>Your hands stay on the assessment — someone else takes this.</p>
+                  </div>
+                )}
+                {calmBlocked && <div className={styles.blocked}>{calmBlocked}</div>}
+              </div>
+            )}
+          </div>
+
           {/* Patient Status (initial assessment) */}
           <div className={styles.section}>
             <div className={styles.sectionHeader}>
               <span className={styles.sectionTitle}>Patient Status</span>
               {stateChip('initial_assessment')}
             </div>
+            {/* He's talking — that confirms ABCs quickly, no separate checks (fix #11). */}
+            {model.patientTalking && (
+              <>
+                {isComplete(clinical, 'confirm_abc_talking') ? (
+                  <div className={styles.findings}>
+                    <div className={styles.finding}>
+                      <span className={styles.source}>{FINDING_SOURCE_LABELS[model.abcTalkingConfirm.source]}</span>
+                      {model.abcTalkingConfirm.text}
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <p className={opStyles.hint}>He’s talking to you as you walk in.</p>
+                    {renderAction('confirm_abc_talking', 'He’s talking — confirm ABCs from that')}
+                  </>
+                )}
+              </>
+            )}
             {isComplete(clinical, 'initial_assessment') ? (
               <div className={styles.findings}>
                 <div className={styles.finding}><span className={styles.findingLabel}>Appearance</span>{init.appearance}</div>
@@ -300,6 +384,21 @@ export function ClinicalPanel({
               <span className={styles.sectionTitle}>Patient Interview</span>
               {stateChip('interview')}
             </div>
+            {/* The single most useful early question (fix #11). */}
+            <div className={styles.sectionHeader}>
+              <span className={styles.sectionTitle} style={{ fontSize: '0.85rem' }}>What hurts most?</span>
+              {stateChip('ask_worst_pain')}
+            </div>
+            {isComplete(clinical, 'ask_worst_pain') ? (
+              <div className={styles.findings}>
+                <div className={styles.finding}>
+                  <span className={styles.source}>{FINDING_SOURCE_LABELS[model.worstComplaint.source]}</span>
+                  {model.worstComplaint.text}
+                </div>
+              </div>
+            ) : (
+              renderAction('ask_worst_pain', 'Ask what hurts most')
+            )}
             {isComplete(clinical, 'interview') ? (
               <div className={styles.findings}>
                 {model.interview.map((s) => (

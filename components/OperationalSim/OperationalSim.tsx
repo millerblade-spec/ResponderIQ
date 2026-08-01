@@ -1,16 +1,18 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
+import { useEffect, useMemo, useState, useRef, useSyncExternalStore } from 'react';
 import { DEFAULT_SIMULATOR_CONFIG, type SimulatorConfig } from '@/lib/engine/config';
 import { MissionClock, startTicking, systemTimeSource } from '@/lib/engine/missionClock';
-import { EQUIPMENT_CATALOG, equipmentLabel } from '@/lib/opsim/equipment';
 import { differentialTimerSeconds } from '@/lib/opsim/difficulty';
+import { hasVisitedDifferential, markDifferentialVisited } from '@/lib/opsim/firstVisit';
 import {
   bls01Dispatch,
   bls01Differentials,
   bls01Scene,
   bls01Distractions,
   bls01DynamicsDifficulty,
+  bls01ParkingOptions,
+  bls01FireArrivalDelaySeconds,
   type ScenarioDistraction,
 } from '@/lib/scenarios/bls-01.dispatch';
 import type { SceneConfig } from '@/lib/opsim/scene';
@@ -18,6 +20,7 @@ import type { DifficultyName } from '@/lib/opsim/dynamics';
 import { bls01Clinical } from '@/lib/opsim/clinical';
 import type { ClinicalModel } from '@/lib/opsim/clinical';
 import { fireResponseFor, type CallType } from '@/lib/opsim/crew';
+import { PROVISIONAL_LEARNER_ID } from '@/lib/opsim/constants';
 import { OnSceneOps } from './OnSceneOps';
 import { RunComplete, type RunFacts } from '@/components/RunComplete/RunComplete';
 import { useAudioOptional } from '@/components/Audio/AudioProvider';
@@ -30,16 +33,13 @@ import {
   canFinalizeDifferential,
   finalizeDifferential,
   arriveOnScene,
-  showEquipmentPrompt,
-  toggleEquipment,
-  confirmEquipment,
+  chooseParking,
   rankedTop,
 } from '@/lib/opsim/machine';
-import type { DifferentialChoice, DispatchInfo, DifficultyLevel } from '@/lib/opsim/types';
+import type { DifferentialChoice, DispatchInfo, DifficultyLevel, ParkingOption } from '@/lib/opsim/types';
 import { loadSettings } from '@/lib/settings/storage';
 import type { LightingMode } from '@/lib/settings/types';
 import { DifferentialModal } from './DifferentialModal';
-import { EquipmentPanel } from './EquipmentPanel';
 import styles from './OperationalSim.module.css';
 
 function subscribeToStorage(callback: () => void) {
@@ -50,13 +50,18 @@ function subscribeToStorage(callback: () => void) {
 interface OperationalSimProps {
   readonly scenarioId?: string;
   readonly level?: DifficultyLevel;
+  /** Per-user first-visit tracking for the differential timer (§8) is keyed by this. */
+  readonly learnerId?: string;
   readonly dispatch?: DispatchInfo;
   readonly choices?: readonly DifferentialChoice[];
+  readonly parkingOptions?: readonly ParkingOption[];
   readonly scene?: SceneConfig;
   readonly callType?: CallType;
   readonly distractions?: readonly ScenarioDistraction[];
   readonly dynamicsDifficulty?: DifficultyName;
   readonly clinicalModel?: ClinicalModel;
+  /** Seconds after on-scene before fire arrives; 0 = with the medics (fix #8 hook). */
+  readonly fireArrivalDelaySeconds?: number;
   /** Injectable for tests; defaults to a real system-clock-backed MissionClock. */
   readonly clock?: MissionClock;
   /** Whether to drive the clock from a real interval. Tests pass false and tick manually. */
@@ -67,23 +72,26 @@ interface OperationalSimProps {
 }
 
 /**
- * Orchestrates the dispatch → Code 3 → differential → equipment sequence
- * (§7–§9). All timing runs through ONE injected mission clock; there are no
- * ad-hoc setTimeouts. Scheduling happens in mount-scoped effects that clean up
- * on unmount, and each scheduled transition is idempotent in the machine, so
- * rerenders never double-fire or leak timers. State lives in one typed
- * OpSimState; the pure transitions live in lib/opsim/machine.
+ * Orchestrates the dispatch → Code 3 → differential → arrival → parking
+ * sequence (§7–§9). All timing runs through ONE injected mission clock; there
+ * are no ad-hoc setTimeouts. Locking the differential in early does NOT arrive
+ * early — the moment the differential timer ends, the unit is ON SCENE
+ * (beacons off) and the parking question opens. Equipment selection now
+ * happens inside the scene-safety flow, when the crew steps out of the unit.
  */
 export function OperationalSim({
   scenarioId = 'bls-01',
   level = 'orientation',
+  learnerId = PROVISIONAL_LEARNER_ID,
   dispatch = bls01Dispatch,
   choices = bls01Differentials,
+  parkingOptions = bls01ParkingOptions,
   scene = bls01Scene,
   callType = 'ems',
   distractions = bls01Distractions,
   dynamicsDifficulty = bls01DynamicsDifficulty,
   clinicalModel = bls01Clinical,
+  fireArrivalDelaySeconds = bls01FireArrivalDelaySeconds,
   clock,
   ticking = true,
   lightingMode,
@@ -93,17 +101,19 @@ export function OperationalSim({
   const [state, setState] = useState(() => createInitialOpSimState(scenarioId, level));
   const [displaySeconds, setDisplaySeconds] = useState(0);
   const [completedFacts, setCompletedFacts] = useState<RunFacts | null>(null);
+  // The very first time this learner EVER reaches the differential page gets
+  // the longer timer (§8). Read once at mount, per-user (not per-session).
+  const [isFirstVisit] = useState(() => !hasVisitedDifferential(learnerId));
   const audioController = useAudioOptional()?.controller;
 
   const scheduledRef = useRef<number[]>([]);
-  const finalizeHandledRef = useRef(false);
 
   // The 3-second dispatch alert, played once when the console mounts (§7, §11).
   useEffect(() => {
     audioController?.play('dispatch_alert', { onceKey: 'dispatch-alert' });
   }, [audioController]);
 
-  const timerSeconds = differentialTimerSeconds(level, config);
+  const timerSeconds = differentialTimerSeconds(level, config, isFirstVisit);
   const toneSeconds = config.timing.dispatchToneSeconds;
   // Stable across renders so CrewOps's scheduling effect doesn't re-run each tick.
   const engines = useMemo(() => fireResponseFor(callType), [callType]);
@@ -118,38 +128,31 @@ export function OperationalSim({
   );
   const reducedFlashing = lightingMode !== undefined ? lightingMode === 'reduced' : storedReducedFlashing;
 
-  // Start the mission clock with the dispatch tone and schedule the tone
-  // completion and the differential deadline. Cleaned up on unmount.
+  // Start the mission clock with the dispatch tone. The tone opens the
+  // differential; the deadline finalizes whatever is selected AND puts the
+  // unit ON SCENE that same moment (fix #2) — arrival is pinned to the timer,
+  // never to an early lock-in. Cleaned up on unmount.
   useEffect(() => {
     activeClock.start();
-    const toneId = activeClock.at(toneSeconds, () => setState(completeTone));
+    const toneId = activeClock.at(toneSeconds, () => {
+      setState(completeTone);
+      markDifferentialVisited(learnerId);
+    });
     const deadlineId = activeClock.at(toneSeconds + timerSeconds, () =>
-      setState((s) => finalizeDifferential(s, { timeout: true }, config)),
+      setState((s) => arriveOnScene(finalizeDifferential(s, { timeout: true }, config))),
     );
     scheduledRef.current.push(toneId, deadlineId);
     return () => {
       scheduledRef.current.forEach((id) => activeClock.cancel(id));
       scheduledRef.current = [];
     };
-  }, [activeClock, toneSeconds, timerSeconds, config]);
+  }, [activeClock, toneSeconds, timerSeconds, config, learnerId]);
 
   // Drive the clock from a single real interval (also updates the visible clock).
   useEffect(() => {
     if (!ticking) return;
     return startTicking(activeClock, 200, () => setDisplaySeconds(activeClock.elapsedSeconds()));
   }, [activeClock, ticking]);
-
-  // When the differential ends (by choice or timeout): arrive on scene, then
-  // open the equipment prompt 3 seconds later. Guarded to run exactly once.
-  useEffect(() => {
-    if (!state.differential.finalized || finalizeHandledRef.current) return;
-    finalizeHandledRef.current = true;
-    setState(arriveOnScene);
-    const id = activeClock.after(config.timing.equipmentPromptDelaySeconds, () =>
-      setState(showEquipmentPrompt),
-    );
-    scheduledRef.current.push(id);
-  }, [state.differential.finalized, activeClock, config]);
 
   const remaining = Math.max(0, toneSeconds + timerSeconds - displaySeconds);
   const responding = state.responseStatus === 'responding';
@@ -219,6 +222,32 @@ export function OperationalSim({
           {!state.toneComplete && <p className={styles.toneNote}>▶ Dispatch alert tone…</p>}
         </section>
 
+        {/* Parking (fix #3): asked on arrival, never derived automatically. */}
+        {state.stage === 'parking' && (
+          <section className={styles.panel} aria-label="Where do we park">
+            <div className={styles.ron}>
+              <span className={styles.ronName}>Partner Ron:</span>
+              <span>“We’re here. Where do you want me to put the truck?”</span>
+            </div>
+            <div className={styles.choiceGrid} role="group" aria-label="Parking options">
+              {parkingOptions.map((opt) => (
+                <button
+                  key={opt.id}
+                  type="button"
+                  className={styles.choice}
+                  onClick={() => setState((s) => chooseParking(s, opt.id))}
+                >
+                  <span>
+                    <strong>{opt.label}</strong>
+                    <br />
+                    <span className={styles.hint}>{opt.detail}</span>
+                  </span>
+                </button>
+              ))}
+            </div>
+          </section>
+        )}
+
         {state.stage === 'ready' && (
           <section className={styles.panel} aria-label="On-scene summary">
             <h2 className={styles.panelTitle}>On scene</h2>
@@ -228,25 +257,15 @@ export function OperationalSim({
                 .map((id) => choices.find((c) => c.id === id)?.label ?? id)
                 .join(' · ') || '—'}
             </p>
-            <p className={styles.instruction}>Equipment on scene:</p>
-            <div className={styles.summary}>
-              {state.equipment.selected.length === 0 ? (
-                <span className={styles.hint}>Nothing brought in — everything is still on Medic 3.</span>
-              ) : (
-                state.equipment.selected.map((id) => (
-                  <span key={id} className={styles.summaryTag}>
-                    {equipmentLabel(id)}
-                  </span>
-                ))
-              )}
-            </div>
+            <p className={styles.instruction}>
+              Parked: {parkingOptions.find((p) => p.id === state.parking.choice)?.label ?? '—'}
+            </p>
           </section>
         )}
 
         {state.stage === 'ready' && (
           <OnSceneOps
             engines={engines}
-            equipmentOnScene={state.equipment.selected}
             clock={activeClock}
             difficulty={dynamicsDifficulty}
             distractions={distractions}
@@ -256,6 +275,8 @@ export function OperationalSim({
             differentialChoices={choices}
             scenarioId={scenarioId}
             runDifficulty={level}
+            parkingChoice={state.parking.choice}
+            fireArrivalDelaySeconds={fireArrivalDelaySeconds}
             onComplete={setCompletedFacts}
           />
         )}
@@ -271,15 +292,6 @@ export function OperationalSim({
           onToggle={(id) => setState((s) => toggleDifferentialSelection(s, id))}
           onReorder={(id, dir) => setState((s) => reorderRanking(s, id, dir))}
           onFinalize={() => setState((s) => finalizeDifferential(s, { timeout: false }, config))}
-        />
-      )}
-
-      {state.equipment.open && (
-        <EquipmentPanel
-          catalog={EQUIPMENT_CATALOG}
-          selected={state.equipment.selected}
-          onToggle={(id) => setState((s) => toggleEquipment(s, id))}
-          onConfirm={() => setState((s) => confirmEquipment(s))}
         />
       )}
     </main>
