@@ -4,7 +4,7 @@ import { render, screen, within, fireEvent, act } from '@testing-library/react';
 import { CrewOps } from './CrewOps';
 import { useCrew } from './useCrew';
 import { MissionClock, type TimeSource } from '@/lib/engine/missionClock';
-import { fireResponseFor } from '@/lib/opsim/crew';
+import { fireResponseFor, EQUIPMENT_TASKS, PATIENT_CARE_TASKS } from '@/lib/opsim/crew';
 
 class ManualTimeSource implements TimeSource {
   private t = 0;
@@ -43,10 +43,19 @@ function renderCrew(equipmentOnScene: string[] = [], callType: 'ems' | 'mvc_two_
   return { ...utils, advance, clock, source };
 }
 
+function categoryFor(taskLabel: string): string {
+  if (PATIENT_CARE_TASKS.some((t) => t.label === taskLabel)) return 'Patient care';
+  if (EQUIPMENT_TASKS.some((t) => t.label === taskLabel)) return 'Equipment';
+  return 'Scene operations';
+}
+
+// Drive the assignment drawer: open it, pick the category, the task, then confirm.
 function assignVia(name: RegExp, taskLabel: string) {
   fireEvent.click(screen.getByRole('button', { name: new RegExp(`^Assign ${name.source}`, 'i') }));
-  const palette = screen.getByLabelText('Task palette');
-  fireEvent.click(within(palette).getByRole('button', { name: taskLabel }));
+  const drawer = screen.getByRole('dialog');
+  fireEvent.click(within(drawer).getByRole('button', { name: categoryFor(taskLabel) }));
+  fireEvent.click(within(drawer).getByRole('button', { name: taskLabel }));
+  fireEvent.click(within(drawer).getByRole('button', { name: /confirm assignment/i }));
 }
 
 describe('CrewOps — arrival & personnel (§11, §12)', () => {

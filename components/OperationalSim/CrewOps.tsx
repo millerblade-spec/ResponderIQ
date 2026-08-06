@@ -11,6 +11,8 @@ import {
   STATUS_LABELS,
   equipmentLabelForTask,
   taskDef,
+  type TaskCategory,
+  type TaskDef,
 } from '@/lib/opsim/crew';
 import type { CrewController } from './useCrew';
 import type { ResponderRuntime } from '@/lib/opsim/crewMachine';
@@ -22,10 +24,10 @@ interface CrewOpsProps {
   readonly clock: MissionClock;
 }
 
-const TASK_GROUPS = [
-  { title: 'Equipment', tasks: EQUIPMENT_TASKS },
-  { title: 'Patient care', tasks: PATIENT_CARE_TASKS },
-  { title: 'Scene operations', tasks: SCENE_OPS_TASKS },
+const CATEGORIES: { id: TaskCategory; label: string; tasks: readonly TaskDef[] }[] = [
+  { id: 'patient_care', label: 'Patient care', tasks: PATIENT_CARE_TASKS },
+  { id: 'equipment', label: 'Equipment', tasks: EQUIPMENT_TASKS },
+  { id: 'scene_ops', label: 'Scene operations', tasks: SCENE_OPS_TASKS },
 ];
 
 function fmt(total: number): string {
@@ -49,27 +51,57 @@ function rejectionMessage(reason: string, taskId: string): string {
   }
 }
 
+/** Human-readable requirements for the drawer review step (read from the task def). */
+function taskRequirements(t: TaskDef): string[] {
+  const reqs: string[] = [];
+  if (t.durationSeconds != null) reqs.push(`Estimated ${fmt(t.durationSeconds)} to complete`);
+  if (t.equipmentId) reqs.push('Equipment retrieval — 45s if it is still on Medic 3');
+  if (t.revealsClinical) reqs.push('Reveals clinical findings (needs patient contact)');
+  if (t.safetyHazard) reqs.push('Fire crew will refuse while the hazard is uncontrolled');
+  if (t.obligation) reqs.push('Creates a safety/roadway obligation that blocks clearing the engine');
+  if (reqs.length === 0) reqs.push('No special requirements.');
+  return reqs;
+}
+
 /**
  * Crew-resource management panel (§10–§14). Presentational: it reads and mutates
- * the shared crew via the CrewController, so Scene Dynamics and this panel act
- * on the same personnel.
+ * the shared crew via the CrewController, so Scene Dynamics and this panel act on
+ * the same personnel. The default view is a roster; assigning a task opens a
+ * focused drawer (category → task → review → confirm) rather than a wall of
+ * buttons — every task still comes from the existing task data and dispatches the
+ * same crew-machine action.
  */
 export function CrewOps({ controller, clock }: CrewOpsProps) {
   const { crew } = controller;
-  const [selected, setSelected] = useState<string | null>(null);
+  const [drawerFor, setDrawerFor] = useState<string | null>(null);
+  const [category, setCategory] = useState<TaskCategory | null>(null);
+  const [task, setTask] = useState<TaskDef | null>(null);
   const [reassignFrom, setReassignFrom] = useState<string | null>(null);
   const [showResources, setShowResources] = useState(false);
   const [confirmClear, setConfirmClear] = useState<string | null>(null);
   const [blocked, setBlocked] = useState<Record<string, string>>({});
 
-  function doAssign(responderId: string, taskId: string) {
-    const rejected = controller.assign(responderId, taskId);
+  function openDrawer(responderId: string) {
+    setDrawerFor(responderId);
+    setCategory(null);
+    setTask(null);
+  }
+  function closeDrawer() {
+    setDrawerFor(null);
+    setCategory(null);
+    setTask(null);
+  }
+
+  function confirmAssign() {
+    if (!drawerFor || !task) return;
+    const rejected = controller.assign(drawerFor, task.id);
     if (rejected) {
-      setBlocked((b) => ({ ...b, [responderId]: rejectionMessage(rejected, taskId) }));
+      setBlocked((b) => ({ ...b, [drawerFor]: rejectionMessage(rejected, task.id) }));
+      closeDrawer();
       return;
     }
-    setSelected(null);
-    setBlocked((b) => ({ ...b, [responderId]: '' }));
+    setBlocked((b) => ({ ...b, [drawerFor]: '' }));
+    closeDrawer();
   }
 
   function handleResponderClick(r: ResponderRuntime) {
@@ -78,7 +110,7 @@ export function CrewOps({ controller, clock }: CrewOpsProps) {
       setReassignFrom(null);
       return;
     }
-    setSelected((cur) => (cur === r.id ? null : r.id));
+    openDrawer(r.id);
   }
 
   function handleClearEngine(engineId: string) {
@@ -98,6 +130,7 @@ export function CrewOps({ controller, clock }: CrewOpsProps) {
 
   const now = clock.elapsedSeconds();
   const arrivedEngines = Object.values(crew.apparatus).filter((a) => a.arrived);
+  const drawerName = drawerFor ? crew.responders[drawerFor]?.name : '';
 
   return (
     <section className={opStyles.panel} aria-label="Crew assignments">
@@ -120,7 +153,7 @@ export function CrewOps({ controller, clock }: CrewOpsProps) {
 
       {reassignFrom && <p className={styles.officerLine}>Reassigning — pick who takes it over.</p>}
 
-      <div className={styles.roster}>
+      <div className={styles.roster} role="table" aria-label="Crew roster">
         {crew.order.map((id) => {
           const r = crew.responders[id];
           const a = r.assignment;
@@ -131,7 +164,8 @@ export function CrewOps({ controller, clock }: CrewOpsProps) {
           return (
             <div
               key={id}
-              className={`${styles.responder} ${selected === id ? styles.selected : ''} ${r.status === 'cleared_from_call' ? styles.cleared : ''}`}
+              role="row"
+              className={`${styles.responder} ${drawerFor === id ? styles.selected : ''} ${r.status === 'cleared_from_call' ? styles.cleared : ''}`}
             >
               <div className={styles.responderMain}>
                 <div className={styles.responderName}>{r.name}</div>
@@ -140,11 +174,13 @@ export function CrewOps({ controller, clock }: CrewOpsProps) {
                     {isRetr
                       ? `Retrieving ${equipmentLabelForTask(a.taskId)} — `
                       : `${taskDef(a.taskId)?.label ?? a.taskId} — `}
-                    {a.status === 'complete'
-                      ? 'done'
-                      : remaining != null && remaining > 0
-                        ? <span className={styles.eta}>{fmt(remaining)}</span>
-                        : 'in progress'}
+                    {a.status === 'complete' ? (
+                      'done'
+                    ) : remaining != null && remaining > 0 ? (
+                      <span className={styles.eta}>{fmt(remaining)}</span>
+                    ) : (
+                      'in progress'
+                    )}
                   </div>
                 )}
                 {blocked[id] && <div className={styles.blockedReason}>{blocked[id]}</div>}
@@ -161,7 +197,7 @@ export function CrewOps({ controller, clock }: CrewOpsProps) {
                       aria-label={`${reassignFrom ? 'Assign the reassigned task to' : 'Assign'} ${r.name}`}
                       onClick={() => handleResponderClick(r)}
                     >
-                      {reassignFrom ? 'Take over' : selected === id ? 'Close' : 'Assign'}
+                      {reassignFrom ? 'Take over' : 'Assign'}
                     </button>
                   )}
                   {active && (
@@ -190,24 +226,6 @@ export function CrewOps({ controller, clock }: CrewOpsProps) {
           );
         })}
       </div>
-
-      {selected && (
-        <div className={styles.palette} aria-label="Task palette">
-          <div className={styles.paletteTitle}>Assign a task to {crew.responders[selected]?.name}</div>
-          {TASK_GROUPS.map((group) => (
-            <div key={group.title}>
-              <div className={styles.categoryTitle}>{group.title}</div>
-              <div className={styles.taskButtons}>
-                {group.tasks.map((t) => (
-                  <button key={t.id} type="button" className={styles.taskButton} onClick={() => doAssign(selected, t.id)}>
-                    {t.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
 
       {arrivedEngines.length > 0 && (
         <div style={{ marginTop: '1rem' }}>
@@ -251,6 +269,81 @@ export function CrewOps({ controller, clock }: CrewOpsProps) {
           </div>
         )}
       </div>
+
+      {/* ---- Assignment drawer ---- */}
+      {drawerFor && (
+        <div className={opStyles.overlay} onClick={closeDrawer}>
+          <div
+            className={styles.drawer}
+            role="dialog"
+            aria-modal="true"
+            aria-label={`Assign a task to ${drawerName}`}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className={styles.drawerHeader}>
+              <div className={styles.drawerTitle}>Assign — {drawerName}</div>
+              <button type="button" className={styles.smallButton} aria-label="Close" onClick={closeDrawer}>
+                ✕
+              </button>
+            </div>
+
+            <ol className={styles.steps} aria-hidden="true">
+              <li className={!category ? styles.stepActive : styles.stepDone}>1 Category</li>
+              <li className={category && !task ? styles.stepActive : task ? styles.stepDone : ''}>2 Task</li>
+              <li className={task ? styles.stepActive : ''}>3 Review</li>
+            </ol>
+
+            {!category && (
+              <div className={styles.taskButtons}>
+                {CATEGORIES.map((c) => (
+                  <button key={c.id} type="button" className={styles.taskButton} onClick={() => setCategory(c.id)}>
+                    {c.label}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {category && !task && (
+              <>
+                <button type="button" className={styles.linkButton} onClick={() => setCategory(null)}>
+                  ← Back to categories
+                </button>
+                <div className={styles.taskButtons}>
+                  {CATEGORIES.find((c) => c.id === category)?.tasks.map((t) => (
+                    <button key={t.id} type="button" className={styles.taskButton} onClick={() => setTask(t)}>
+                      {t.label}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+
+            {task && (
+              <>
+                <button type="button" className={styles.linkButton} onClick={() => setTask(null)}>
+                  ← Back to tasks
+                </button>
+                <div className={styles.review}>
+                  <div className={styles.reviewTask}>{task.label}</div>
+                  <ul className={styles.reviewReqs}>
+                    {taskRequirements(task).map((req) => (
+                      <li key={req}>{req}</li>
+                    ))}
+                  </ul>
+                </div>
+                <div className={styles.drawerFooter}>
+                  <button type="button" className={styles.smallButton} onClick={closeDrawer}>
+                    Cancel
+                  </button>
+                  <button type="button" className={styles.confirmButton} onClick={confirmAssign}>
+                    Confirm assignment
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </section>
   );
 }

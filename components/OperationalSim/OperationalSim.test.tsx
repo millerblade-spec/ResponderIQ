@@ -41,6 +41,28 @@ function toDifferential(advance: (s: number) => void) {
   advance(3); // dispatch tone complete
 }
 
+/** Locks in the differential with four selections, immediately (does not wait for the timer). */
+function lockInEarly(advance: (s: number) => void) {
+  advance(3);
+  const buttons = within(diffGroup()).getAllByRole('button');
+  [0, 1, 2, 3].forEach((i) => fireEvent.click(buttons[i]));
+  fireEvent.click(screen.getByRole('button', { name: /lock in/i }));
+}
+
+/**
+ * Drives a run from mount through arrival, parking, the windshield, and out
+ * of the unit to the equipment stage (§9) — the console's Scene tab, where
+ * equipment selection now lives (it is no longer a top-level prompt that
+ * fires a fixed delay after the differential).
+ */
+function toEquipmentStage(advance: (s: number) => void) {
+  lockInEarly(advance);
+  advance(20); // differential deadline; arrival is pinned to it regardless of the early lock-in
+  fireEvent.click(screen.getByRole('button', { name: /across the street/i }));
+  fireEvent.click(screen.getByRole('button', { name: 'Safe to Enter' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Exit Medic 3' }));
+}
+
 beforeEach(() => window.localStorage.clear());
 afterEach(() => vi.restoreAllMocks());
 
@@ -50,10 +72,10 @@ describe('OperationalSim — dispatch & Code 3 (§7)', () => {
     expect(clock.running).toBe(true);
   });
 
-  it('shows Medic 3 on EMS 2 and the dispatch tone note before the tone completes', () => {
+  it('shows Medic 3 and the dispatch tone note before the tone completes', () => {
     renderSim();
     expect(screen.getByText('Medic 3')).toBeInTheDocument();
-    expect(screen.getByText(/Radio: EMS 2/)).toBeInTheDocument();
+    expect(screen.getByText(/Channel: EMS 2/)).toBeInTheDocument();
     expect(screen.getByText(/dispatch alert tone/i)).toBeInTheDocument();
   });
 
@@ -207,13 +229,6 @@ describe('OperationalSim — timers time out and save partial work (§8, fix #1)
 });
 
 describe('OperationalSim — arrival & parking (fixes #2, #3)', () => {
-  function lockInEarly(advance: (s: number) => void) {
-    advance(3);
-    const buttons = within(diffGroup()).getAllByRole('button');
-    [0, 1, 2, 3].forEach((i) => fireEvent.click(buttons[i]));
-    fireEvent.click(screen.getByRole('button', { name: /lock in/i }));
-  }
-
   it('locking in early keeps the unit RESPONDING — arrival waits for the timer', () => {
     const { advance } = renderSim();
     lockInEarly(advance);
@@ -231,17 +246,86 @@ describe('OperationalSim — arrival & parking (fixes #2, #3)', () => {
     expect(screen.getByText(/where do you want me to put the truck/i)).toBeInTheDocument();
   });
 
-  it('choosing a parking spot records it and begins on-scene operations at the windshield', () => {
+  it('choosing a parking spot records it (shown in the console) and begins on-scene operations at the windshield', () => {
     const { advance } = renderSim();
     lockInEarly(advance);
     advance(20);
     fireEvent.click(screen.getByRole('button', { name: /across the street/i }));
-    const summary = screen.getByRole('region', { name: /on-scene summary/i });
-    expect(within(summary).getByText(/across the street/i)).toBeInTheDocument();
+
+    const sceneStatus = screen.getByRole('region', { name: /scene status/i });
+    expect(within(sceneStatus).getByText(/across the street/i)).toBeInTheDocument();
     // On-scene ops open at the windshield assessment; equipment comes later,
-    // when the crew steps out of the unit (fix #6).
-    expect(screen.getByText(/are we safe to enter/i)).toBeInTheDocument();
+    // when the crew steps out of the unit (fix #6) — not as a fixed-delay
+    // top-level prompt.
+    expect(screen.getByRole('heading', { name: /windshield assessment/i })).toBeInTheDocument();
     expect(screen.queryByText(/what do you want to bring in/i)).toBeNull();
+  });
+});
+
+describe('OperationalSim — command console (on-scene)', () => {
+  it('presents the console workspace tabs, including a dedicated Transport tab', () => {
+    const { advance } = renderSim();
+    lockInEarly(advance);
+    advance(20);
+    fireEvent.click(screen.getByRole('button', { name: /across the street/i }));
+
+    const tabs = screen.getByRole('tablist', { name: /operational workspace/i });
+    ['Scene View', 'Scene Dynamics', 'Patient Assessment', 'Packaging & Transport', 'Crew Operations', 'Timeline'].forEach(
+      (label) => {
+        expect(within(tabs).getByRole('tab', { name: label })).toBeInTheDocument();
+      },
+    );
+  });
+
+  it('lists Packaging & transport in the scenario progress rail', () => {
+    const { advance } = renderSim();
+    lockInEarly(advance);
+    advance(20);
+    fireEvent.click(screen.getByRole('button', { name: /across the street/i }));
+    const progress = screen.getByRole('region', { name: /scenario progress/i });
+    expect(within(progress).getByText(/packaging & transport/i)).toBeInTheDocument();
+  });
+
+  it('the Transport tab stays locked until patient contact is established', () => {
+    const { advance } = renderSim();
+    toEquipmentStage(advance);
+    fireEvent.click(screen.getByRole('tab', { name: 'Packaging & Transport' }));
+    expect(screen.getByText(/locked until you have patient contact/i)).toBeInTheDocument();
+  });
+
+  it('equipment selection happens inside the scene flow (§9): selected gear appears on scene, the rest stays on Medic 3', () => {
+    const { advance } = renderSim();
+    toEquipmentStage(advance);
+
+    const group = screen.getByRole('group', { name: /equipment options/i });
+    fireEvent.click(within(group).getByRole('button', { name: /als bag/i }));
+    fireEvent.click(screen.getByRole('button', { name: /bring these in/i }));
+
+    const onSceneEquip = screen.getByRole('group', { name: /equipment on scene/i });
+    expect(within(onSceneEquip).getByText('ALS Bag')).toBeInTheDocument();
+    expect(within(onSceneEquip).queryByText('Portable Suction')).toBeNull(); // not brought in
+    const onTruck = screen.getByRole('group', { name: /still on medic 3/i });
+    expect(within(onTruck).getByText('Portable Suction')).toBeInTheDocument(); // still on Medic 3
+  });
+
+  it('has no top-level equipment modal firing on a fixed delay after the differential (superseded by §9)', () => {
+    const { advance } = renderSim();
+    lockInEarly(advance);
+    advance(20);
+    fireEvent.click(screen.getByRole('button', { name: /across the street/i }));
+    // The old flow opened an equipment prompt 3 seconds after arrival, before
+    // the windshield/staging/exit sequence existed. That prompt must not
+    // reappear here, however long we wait, without going through the scene
+    // flow first.
+    advance(10);
+    expect(screen.queryByRole('group', { name: /equipment options/i })).toBeNull();
+  });
+
+  it('has no manual "End Scenario" control — the run can only complete via the transport pain-management decision (fix #16)', () => {
+    const { advance } = renderSim();
+    toEquipmentStage(advance);
+    expect(screen.queryByRole('button', { name: /end scenario/i })).toBeNull();
+    expect(screen.queryByRole('button', { name: /complete run/i })).toBeNull();
   });
 });
 

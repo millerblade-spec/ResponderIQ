@@ -34,13 +34,13 @@ import {
   finalizeDifferential,
   arriveOnScene,
   chooseParking,
-  rankedTop,
 } from '@/lib/opsim/machine';
 import type { DifferentialChoice, DispatchInfo, DifficultyLevel, ParkingOption } from '@/lib/opsim/types';
 import { loadSettings } from '@/lib/settings/storage';
 import type { LightingMode } from '@/lib/settings/types';
 import { DifferentialModal } from './DifferentialModal';
 import styles from './OperationalSim.module.css';
+import shell from './Console.module.css';
 
 function subscribeToStorage(callback: () => void) {
   window.addEventListener('storage', callback);
@@ -73,11 +73,18 @@ interface OperationalSimProps {
 
 /**
  * Orchestrates the dispatch → Code 3 → differential → arrival → parking
- * sequence (§7–§9). All timing runs through ONE injected mission clock; there
- * are no ad-hoc setTimeouts. Locking the differential in early does NOT arrive
- * early — the moment the differential timer ends, the unit is ON SCENE
- * (beacons off) and the parking question opens. Equipment selection now
- * happens inside the scene-safety flow, when the crew steps out of the unit.
+ * sequence (§7–§9), then hands off to the on-scene command console. All
+ * timing runs through ONE injected mission clock; there are no ad-hoc
+ * setTimeouts. Locking the differential in early does NOT arrive early — the
+ * moment the differential timer ends, the unit is ON SCENE (beacons off) and
+ * the parking question opens. Equipment selection happens inside the
+ * scene-safety flow, when the crew steps out of the unit (§9); there is no
+ * top-level equipment modal — see OnSceneOps/SceneSafety.
+ *
+ * The console shell (topbar + shell.body) is the presentation layer rebuilt
+ * from the command-console UI; it carries no completion shortcut of its own —
+ * a run can only end by reaching TransportOps' pain-management decision
+ * (fix #16), so there is no path to finish the mission outside the console.
  */
 export function OperationalSim({
   scenarioId = 'bls-01',
@@ -162,108 +169,107 @@ export function OperationalSim({
     return <RunComplete facts={completedFacts} />;
   }
 
+  const onScene = state.stage === 'ready';
+  const parkingLabel = parkingOptions.find((p) => p.id === state.parking.choice)?.label ?? '—';
+
   return (
-    <main>
-      <div className={styles.wrap}>
-        <div className={styles.statusBar}>
-          <span className={styles.unit}>{dispatch.unit}</span>
-          <span className={styles.radio}>Radio: {dispatch.radioChannel}</span>
-          {responding ? (
-            <span className={`${styles.statusBadge} ${styles.responding}`}>
-              <span className={styles.badgeIcon} aria-hidden="true">
-                ▲
-              </span>
-              <span>RESPONDING · CODE 3</span>
-            </span>
-          ) : (
-            <span className={`${styles.statusBadge} ${styles.onScene}`}>
-              <span className={styles.badgeIcon} aria-hidden="true">
-                ✓
-              </span>
-              <span>ON SCENE</span>
-            </span>
-          )}
-          <span className={styles.clock}>
-            <span className={styles.clockLabel}>Mission clock</span>
-            {formatSeconds(displaySeconds)}
+    <main className={shell.shell}>
+      <header className={shell.topbar}>
+        <span className={shell.brand}>
+          <span className={shell.brandResponder}>RESPONDER</span>
+          <span className={shell.brandIq}>IQ</span>
+        </span>
+        <span className={shell.unit}>{dispatch.unit}</span>
+        <span className={shell.scenarioName}>{dispatch.callType}</span>
+
+        {responding ? (
+          <span className={`${shell.statusBadge} ${shell.responding}`}>
+            <span aria-hidden="true">▲</span>
+            <span>RESPONDING · CODE 3</span>
           </span>
-        </div>
-
-        <AudioHud />
-
+        ) : (
+          <span className={`${shell.statusBadge} ${shell.onScene}`}>
+            <span aria-hidden="true">✓</span>
+            <span>ON SCENE</span>
+          </span>
+        )}
         {responding && dispatch.responseMode === 'code_3' && (
-          <div
-            className={`${styles.beacons} ${reducedFlashing ? styles.reduced : ''}`}
-            role="status"
-            aria-label="Responding Code 3"
-          >
-            <span className={styles.beaconLights} aria-hidden="true">
-              <span className={`${styles.beacon} ${styles.flash1}`} />
-              <span className={`${styles.beacon} ${styles.flash2}`} />
-            </span>
-            <span className={styles.beaconLabel}>CODE 3 · RESPONDING</span>
-            <span className={styles.beaconMode}>
-              {reducedFlashing ? 'Reduced Flashing Mode' : 'Standard Emergency Lighting'}
-            </span>
+          <span className={shell.lightingChip}>
+            {reducedFlashing ? 'Reduced flashing' : 'Emergency lighting'}
+          </span>
+        )}
+
+        <span className={shell.topSpacer} />
+
+        <span className={shell.clock}>
+          <span className={shell.clockLabel}>Mission clock</span>
+          {formatSeconds(displaySeconds)}
+        </span>
+        <span className={shell.audioSlot}>
+          <AudioHud />
+        </span>
+      </header>
+
+      <div className={shell.body}>
+        {state.stage === 'parking' ? (
+          <div className={shell.dispatchStage}>
+            <section className={styles.panel} aria-label="Where do we park">
+              <div className={styles.ron}>
+                <span className={styles.ronName}>Partner Ron:</span>
+                <span>“We’re here. Where do you want me to put the truck?”</span>
+              </div>
+              <div className={styles.choiceGrid} role="group" aria-label="Parking options">
+                {parkingOptions.map((opt) => (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    className={styles.choice}
+                    onClick={() => setState((s) => chooseParking(s, opt.id))}
+                  >
+                    <span>
+                      <strong>{opt.label}</strong>
+                      <br />
+                      <span className={styles.hint}>{opt.detail}</span>
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </section>
           </div>
-        )}
+        ) : !onScene ? (
+          <div className={shell.dispatchStage}>
+            {responding && dispatch.responseMode === 'code_3' && (
+              <div
+                className={`${styles.beacons} ${reducedFlashing ? styles.reduced : ''}`}
+                role="status"
+                aria-label="Responding Code 3"
+              >
+                <span className={styles.beaconLights} aria-hidden="true">
+                  <span className={`${styles.beacon} ${styles.flash1}`} />
+                  <span className={`${styles.beacon} ${styles.flash2}`} />
+                </span>
+                <span className={styles.beaconLabel}>CODE 3 · RESPONDING</span>
+                <span className={styles.beaconMode}>
+                  {reducedFlashing ? 'Reduced Flashing Mode' : 'Standard Emergency Lighting'}
+                </span>
+              </div>
+            )}
 
-        <section className={styles.panel} aria-labelledby="dispatch-title">
-          <h1 id="dispatch-title" className={styles.panelTitle}>
-            Dispatch — {dispatch.callType}
-          </h1>
-          <div className={styles.dispatchMeta}>
-            <span>Unit: {dispatch.unit}</span>
-            <span>Channel: {dispatch.radioChannel}</span>
-            <span>Response: Code 3</span>
-            <span>{dispatch.location}</span>
+            <section className={styles.panel} aria-labelledby="dispatch-title">
+              <h1 id="dispatch-title" className={styles.panelTitle}>
+                Dispatch — {dispatch.callType}
+              </h1>
+              <div className={styles.dispatchMeta}>
+                <span>Unit: {dispatch.unit}</span>
+                <span>Channel: {dispatch.radioChannel}</span>
+                <span>Response: Code 3</span>
+                <span>{dispatch.location}</span>
+              </div>
+              <p className={styles.dispatchNarrative}>{dispatch.narrative}</p>
+              {!state.toneComplete && <p className={styles.toneNote}>▶ Dispatch alert tone…</p>}
+            </section>
           </div>
-          <p className={styles.dispatchNarrative}>{dispatch.narrative}</p>
-          {!state.toneComplete && <p className={styles.toneNote}>▶ Dispatch alert tone…</p>}
-        </section>
-
-        {/* Parking (fix #3): asked on arrival, never derived automatically. */}
-        {state.stage === 'parking' && (
-          <section className={styles.panel} aria-label="Where do we park">
-            <div className={styles.ron}>
-              <span className={styles.ronName}>Partner Ron:</span>
-              <span>“We’re here. Where do you want me to put the truck?”</span>
-            </div>
-            <div className={styles.choiceGrid} role="group" aria-label="Parking options">
-              {parkingOptions.map((opt) => (
-                <button
-                  key={opt.id}
-                  type="button"
-                  className={styles.choice}
-                  onClick={() => setState((s) => chooseParking(s, opt.id))}
-                >
-                  <span>
-                    <strong>{opt.label}</strong>
-                    <br />
-                    <span className={styles.hint}>{opt.detail}</span>
-                  </span>
-                </button>
-              ))}
-            </div>
-          </section>
-        )}
-
-        {state.stage === 'ready' && (
-          <section className={styles.panel} aria-label="On-scene summary">
-            <h2 className={styles.panelTitle}>On scene</h2>
-            <p className={styles.instruction}>
-              Preparing for (top {config.differential.rankedCount}):{' '}
-              {rankedTop(state, config)
-                .map((id) => choices.find((c) => c.id === id)?.label ?? id)
-                .join(' · ') || '—'}
-            </p>
-            <p className={styles.instruction}>
-              Parked: {parkingOptions.find((p) => p.id === state.parking.choice)?.label ?? '—'}
-            </p>
-          </section>
-        )}
-
-        {state.stage === 'ready' && (
+        ) : (
           <OnSceneOps
             engines={engines}
             clock={activeClock}
@@ -276,8 +282,10 @@ export function OperationalSim({
             scenarioId={scenarioId}
             runDifficulty={level}
             parkingChoice={state.parking.choice}
+            parkingLabel={parkingLabel}
             fireArrivalDelaySeconds={fireArrivalDelaySeconds}
             onComplete={setCompletedFacts}
+            now={displaySeconds}
           />
         )}
       </div>

@@ -1,0 +1,596 @@
+/*
+ * Operational command console layout (presentation only).
+ *
+ * A route-scoped, full-bleed shell that replaces the legacy 860px centered
+ * column for the active incident interface. Themes/colors reuse the existing
+ * design tokens (globals.css) so light/dark and the operational color meanings
+ * are preserved. The grid keeps concurrent operational information visible at
+ * once on desktop; individual regions scroll internally so the page itself does
+ * not scroll. On narrow screens the same regions become a controlled tab set.
+ */
+
+/* Applied to <main>; overrides the global centered `main` for this route only. */
+.shell {
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+  max-width: none;
+  width: 100%;
+  padding: 0;
+  gap: 0;
+  background-color: var(--bg);
+}
+
+/* ---- Persistent top command bar ---- */
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  gap: 0.65rem 0.9rem;
+  flex-wrap: wrap;
+  padding: 0.5rem 1rem;
+  background-color: var(--surface);
+  border-bottom: 1px solid var(--border);
+  box-shadow: var(--panel-shadow);
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.2rem 0.5rem;
+  border-radius: 6px;
+  background-color: var(--brand-plate-bg);
+  border: 1px solid var(--brand-plate-border);
+  font-weight: 900;
+  letter-spacing: 0.02em;
+  font-size: 0.95rem;
+}
+.brandResponder {
+  color: var(--brand-responder);
+}
+.brandIq {
+  color: var(--brand-iq);
+}
+
+.unit {
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+.scenarioName {
+  color: var(--fg-muted);
+  font-size: 0.85rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 16ch;
+}
+
+.topSpacer {
+  margin-left: auto;
+}
+
+.clock {
+  font-variant-numeric: tabular-nums;
+  font-size: 1.15rem;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  line-height: 1;
+}
+.clockLabel {
+  display: block;
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--fg-muted);
+  text-transform: uppercase;
+}
+
+.statusBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-weight: 700;
+  font-size: 0.78rem;
+  padding: 0.28rem 0.6rem;
+  border-radius: 999px;
+  border: 1px solid;
+  white-space: nowrap;
+}
+.responding {
+  color: var(--status-critical);
+  border-color: var(--status-critical);
+  background-color: color-mix(in srgb, var(--status-critical) 12%, transparent);
+}
+.onScene {
+  color: var(--status-safe);
+  border-color: var(--status-safe);
+  background-color: color-mix(in srgb, var(--status-safe) 14%, transparent);
+}
+
+.lightingChip {
+  font-size: 0.68rem;
+  color: var(--fg-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 0.2rem 0.55rem;
+}
+
+.audioSlot {
+  display: inline-flex;
+  align-items: flex-start;
+}
+/* Keep the persistent captions box from forcing the sticky bar too tall. */
+.audioSlot [aria-label='Captions'] {
+  max-height: 4.5rem;
+  overflow-y: auto;
+}
+
+.endButton {
+  background-color: transparent;
+  color: var(--status-critical);
+  border: 1px solid var(--status-critical);
+  border-radius: 6px;
+  padding: 0.35rem 0.7rem;
+  font-weight: 700;
+  font-size: 0.8rem;
+  font-family: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.endButton:hover:not(:disabled) {
+  background-color: color-mix(in srgb, var(--status-critical) 12%, transparent);
+}
+.endButton:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  color: var(--fg-muted);
+  border-color: var(--border);
+}
+
+/* The critical-hazard readout that stays visible on mobile top bar. */
+.topHazard {
+  display: none;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--status-critical);
+}
+
+/* ---- Body ---- */
+.body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Pre-arrival (dispatch → differential → equipment): a focused centered stage. */
+.dispatchStage {
+  width: 100%;
+  max-width: 820px;
+  margin: 0 auto;
+  padding: 1.5rem 1.25rem 2.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+/* ---- On-scene console grid ---- */
+.grid {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(210px, 250px) minmax(0, 1fr) minmax(240px, 300px);
+  grid-template-rows: minmax(0, 1fr) auto;
+  grid-template-areas:
+    'left center right'
+    'bottom bottom bottom';
+  gap: 0.85rem;
+  padding: 0.85rem 1rem 1rem;
+}
+
+.colLeft {
+  grid-area: left;
+}
+.colCenter {
+  grid-area: center;
+  min-width: 0;
+}
+.colRight {
+  grid-area: right;
+}
+.bottomStrip {
+  grid-area: bottom;
+}
+
+.colLeft,
+.colRight {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  overflow-y: auto;
+  min-height: 0;
+  padding-right: 0.15rem;
+}
+
+.colCenter {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+/* ---- Tabs (center workspace + mobile navigation) ---- */
+.tabBar {
+  display: flex;
+  gap: 0.3rem;
+  flex-wrap: wrap;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 0.5rem;
+  margin-bottom: 0.65rem;
+}
+.tab {
+  background-color: transparent;
+  color: var(--fg-muted);
+  border: 1px solid transparent;
+  border-radius: 6px 6px 0 0;
+  padding: 0.4rem 0.8rem;
+  font-weight: 700;
+  font-size: 0.82rem;
+  font-family: inherit;
+  cursor: pointer;
+}
+.tab:hover {
+  color: var(--fg);
+}
+.tabActive {
+  color: var(--fg);
+  background-color: var(--surface);
+  border-color: var(--border);
+  border-bottom-color: var(--surface);
+}
+.tab:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+/* Progress / Equipment tabs only make sense on mobile (they are rails on desktop). */
+.tabMobileOnly {
+  display: none;
+}
+
+.workspace {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 0.15rem;
+}
+.tabPane > * + * {
+  margin-top: 0.85rem;
+}
+
+/* ---- Compact panels ---- */
+.miniPanel {
+  background-color: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: var(--panel-shadow);
+  padding: 0.8rem 0.9rem;
+}
+.miniTitle {
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--fg-muted);
+  margin-bottom: 0.55rem;
+}
+
+/* ---- Scenario Progress ---- */
+.progressList {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+.progressItem {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  font-size: 0.85rem;
+}
+.dot {
+  flex: none;
+  width: 0.7rem;
+  height: 0.7rem;
+  border-radius: 50%;
+  border: 2px solid var(--border);
+  background-color: transparent;
+}
+.dotDone {
+  background-color: var(--status-safe);
+  border-color: var(--status-safe);
+}
+.dotActive {
+  background-color: var(--status-pending);
+  border-color: var(--status-pending);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--status-pending) 25%, transparent);
+}
+.dotPending {
+  border-color: var(--border);
+}
+.progressDone {
+  color: var(--fg-muted);
+}
+.progressActive {
+  font-weight: 700;
+}
+
+/* ---- Key/value rows (Scene Status) ---- */
+.kvRows {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+.kvRow {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  font-size: 0.83rem;
+}
+.kvKey {
+  color: var(--fg-muted);
+}
+.kvVal {
+  font-weight: 600;
+  text-align: right;
+}
+.kvCritical {
+  color: var(--status-critical);
+}
+.kvSafe {
+  color: var(--status-safe);
+}
+
+/* ---- Immediate Priorities ---- */
+.priorities {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+.priority {
+  font-size: 0.83rem;
+  font-weight: 600;
+  padding: 0.45rem 0.6rem;
+  border-radius: 6px;
+  border-left: 4px solid var(--border);
+  background-color: var(--bg);
+}
+.tCritical {
+  border-left-color: var(--status-critical);
+}
+.tBehavioral {
+  border-left-color: var(--status-behavioral);
+}
+.tPending {
+  border-left-color: var(--status-pending);
+}
+.tCaution {
+  border-left-color: var(--status-caution);
+}
+.tInfo {
+  border-left-color: var(--status-info);
+}
+.prioritiesEmpty {
+  font-size: 0.82rem;
+  color: var(--fg-muted);
+}
+
+/* ---- Scene View ---- */
+.sceneGroup + .sceneGroup {
+  margin-top: 0.85rem;
+}
+.sceneGroupTitle {
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--fg-muted);
+  margin-bottom: 0.4rem;
+}
+.entities {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 0.5rem;
+}
+.entity {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  padding: 0.55rem 0.65rem;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background-color: var(--surface);
+}
+.entityIcon {
+  font-size: 1.1rem;
+  line-height: 1.2;
+  flex: none;
+}
+.entityLabel {
+  display: block;
+  font-weight: 700;
+  font-size: 0.85rem;
+}
+.entityMeta {
+  display: block;
+  margin-top: 0.1rem;
+  font-size: 0.76rem;
+  color: var(--fg-muted);
+}
+.entityHazard {
+  border-color: var(--status-critical);
+}
+.entityBehavioral {
+  border-color: var(--status-behavioral);
+}
+.entitySafe {
+  border-color: var(--status-safe);
+}
+
+/* ---- Timeline ---- */
+.timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+.timeRow {
+  display: flex;
+  gap: 0.6rem;
+  font-size: 0.82rem;
+  align-items: baseline;
+}
+.timeAt {
+  font-variant-numeric: tabular-nums;
+  color: var(--fg-muted);
+  flex: none;
+  width: 3.2rem;
+}
+.timelineEmpty {
+  font-size: 0.82rem;
+  color: var(--fg-muted);
+}
+
+/* ---- Communications ---- */
+.commList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.commRow {
+  font-size: 0.83rem;
+}
+.commWho {
+  font-weight: 700;
+  color: var(--status-info);
+}
+.commMuted {
+  color: var(--fg-muted);
+}
+
+/* ---- Retrieval / equipment rows ---- */
+.retrRow {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.6rem;
+  font-size: 0.82rem;
+}
+.retrEta {
+  font-variant-numeric: tabular-nums;
+  color: var(--status-caution);
+  font-weight: 700;
+}
+.tagRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+.tag {
+  font-size: 0.76rem;
+  padding: 0.2rem 0.5rem;
+  border-radius: 999px;
+  border: 1px solid var(--status-safe);
+  color: var(--status-safe);
+}
+.tagMuted {
+  border-color: var(--border);
+  color: var(--fg-muted);
+}
+
+/* ---- Bottom operational strip ---- */
+.stripSections {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 0.85rem;
+  align-items: start;
+}
+
+/* ============================================================
+   Responsive
+   ============================================================ */
+
+/* Tablet: fold the right rail under the center, keep left rail. */
+@media (max-width: 1200px) {
+  .grid {
+    grid-template-columns: minmax(190px, 220px) minmax(0, 1fr);
+    grid-template-areas:
+      'left center'
+      'right right'
+      'bottom bottom';
+    grid-template-rows: minmax(0, 1fr) auto auto;
+  }
+  .colLeft,
+  .colRight {
+    overflow-y: visible;
+  }
+}
+
+/* Mobile: controlled tab system. The tab bar navigates the whole console;
+   rails become their own tab panes instead of stacking the full desktop. */
+@media (max-width: 780px) {
+  .grid {
+    display: flex;
+    flex-direction: column;
+    gap: 0.7rem;
+    padding: 0.7rem 0.8rem 1rem;
+    grid-template-columns: none;
+    grid-template-areas: none;
+  }
+  .tabMobileOnly {
+    display: inline-block;
+  }
+  .topHazard {
+    display: inline-block;
+  }
+  .scenarioName {
+    display: none;
+  }
+
+  /* Rails and bottom strip are hidden unless their mobile tab is selected. */
+  .colLeft,
+  .colRight,
+  .bottomStrip {
+    display: none;
+    overflow-y: visible;
+  }
+  .grid[data-tab='progress'] .colLeft {
+    display: flex;
+  }
+  .grid[data-tab='equipment'] .colRight,
+  .grid[data-tab='equipment'] .bottomStrip {
+    display: flex;
+  }
+  .grid[data-tab='equipment'] .bottomStrip {
+    display: block;
+  }
+
+  /* Center workspace hides when a rail tab is active. */
+  .grid[data-tab='progress'] .colCenter,
+  .grid[data-tab='equipment'] .colCenter {
+    display: none;
+  }
+  .workspace {
+    overflow-y: visible;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dotActive {
+    box-shadow: none;
+  }
+}
