@@ -17,6 +17,8 @@ import { preContactStatus, isClearedToEnter } from '@/lib/opsim/sceneMachine';
 import type { DynamicsState } from '@/lib/opsim/dynamicsMachine';
 import type { ClinicalState } from '@/lib/opsim/clinicalMachine';
 import type { TransportState } from '@/lib/opsim/transportMachine';
+import type { TreatmentConfig, TreatmentModel } from '@/lib/opsim/treatment';
+import type { TreatmentState } from '@/lib/opsim/treatmentMachine';
 import { buildRunFacts } from '@/lib/opsim/captureRun';
 import type { RunFacts } from '@/components/RunComplete/RunComplete';
 import { useCrew } from './useCrew';
@@ -25,6 +27,7 @@ import { SceneSafety } from './SceneSafety';
 import { SceneDynamics } from './SceneDynamics';
 import { ClinicalPanel } from './ClinicalPanel';
 import { TransportOps } from './TransportOps';
+import { TreatmentPanel } from './TreatmentPanel';
 import { SceneView } from './SceneView';
 import {
   progressSteps,
@@ -44,6 +47,8 @@ interface OnSceneOpsProps {
   readonly distractions: readonly ScenarioDistraction[];
   readonly scene: SceneConfig;
   readonly clinicalModel: ClinicalModel;
+  readonly treatmentConfig: TreatmentConfig;
+  readonly treatmentModel: TreatmentModel;
   readonly initialDifferential: readonly string[];
   readonly differentialChoices: readonly DifferentialChoice[];
   readonly scenarioId: string;
@@ -63,12 +68,13 @@ interface OnSceneOpsProps {
   readonly now?: number;
 }
 
-type Tab = 'scene' | 'dynamics' | 'patient' | 'transport' | 'crew' | 'timeline' | 'progress' | 'equipment';
+type Tab = 'scene' | 'dynamics' | 'patient' | 'treatment' | 'transport' | 'crew' | 'timeline' | 'progress' | 'equipment';
 
 const CENTER_TABS: { id: Tab; label: string }[] = [
   { id: 'scene', label: 'Scene View' },
   { id: 'dynamics', label: 'Scene Dynamics' },
   { id: 'patient', label: 'Patient Assessment' },
+  { id: 'treatment', label: 'Treatment' },
   { id: 'transport', label: 'Packaging & Transport' },
   { id: 'crew', label: 'Crew Operations' },
   { id: 'timeline', label: 'Timeline' },
@@ -105,6 +111,8 @@ export function OnSceneOps({
   distractions,
   scene,
   clinicalModel,
+  treatmentConfig,
+  treatmentModel,
   initialDifferential,
   differentialChoices,
   scenarioId,
@@ -136,6 +144,7 @@ export function OnSceneOps({
   const sceneRef = useRef<SceneSafetyState | undefined>(undefined);
   const dynamicsRef = useRef<DynamicsState | undefined>(undefined);
   const clinicalRef = useRef<ClinicalState | undefined>(undefined);
+  const treatmentRef = useRef<TreatmentState | undefined>(undefined);
   const arrivalAudioRef = useRef(false);
 
   const handleScene = useCallback((s: SceneSafetyState) => {
@@ -152,6 +161,9 @@ export function OnSceneOps({
   }, []);
   const handleTransport = useCallback((s: TransportState) => {
     setTransportState(s);
+  }, []);
+  const handleTreatment = useCallback((s: TreatmentState) => {
+    treatmentRef.current = s;
   }, []);
 
   // Fire-engine arrival audio sequence, on the shared clock, played once (§11).
@@ -183,6 +195,7 @@ export function OnSceneOps({
         dynamics: dynamicsRef.current,
         clinical: clinicalRef.current,
         transport,
+        treatment: treatmentRef.current,
       }),
     );
   }
@@ -312,6 +325,17 @@ export function OnSceneOps({
               initialDifferential={initialDifferential}
               differentialChoices={differentialChoices}
               onStateChange={handleClinical}
+            />
+          </div>
+
+          <div className={styles.tabPane} role="tabpanel" hidden={tab !== 'treatment'}>
+            <TreatmentPanel
+              clock={clock}
+              unlocked={clinicalUnlocked}
+              config={treatmentConfig}
+              model={treatmentModel}
+              now={nowSeconds}
+              onStateChange={handleTreatment}
             />
           </div>
 

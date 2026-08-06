@@ -411,6 +411,30 @@
   outline-offset: 2px;
 }
 
+/* Neutral, non-punitive alternative to primaryButton — e.g. "NO — Stay in My
+   Lane" on the Scope-of-Practice prompt. Never red/danger styling; declining
+   is never treated as a wrong answer. */
+.secondaryButton {
+  background-color: transparent;
+  color: var(--fg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.6rem 1.2rem;
+  font-weight: 700;
+  font-size: 0.9rem;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.secondaryButton:hover {
+  border-color: var(--fg-muted);
+}
+
+.secondaryButton:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
 /* ---- Ron speech ---- */
 .ron {
   display: flex;

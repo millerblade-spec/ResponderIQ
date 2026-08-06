@@ -10,6 +10,7 @@ import type { SceneSafetyState } from './sceneMachine';
 import type { DynamicsState } from './dynamicsMachine';
 import type { ClinicalState } from './clinicalMachine';
 import type { TransportState } from './transportMachine';
+import type { TreatmentState } from './treatmentMachine';
 import type { RunFacts } from '@/components/RunComplete/RunComplete';
 
 export interface CaptureArgs {
@@ -25,6 +26,7 @@ export interface CaptureArgs {
   readonly dynamics?: DynamicsState;
   readonly clinical?: ClinicalState;
   readonly transport?: TransportState;
+  readonly treatment?: TreatmentState;
 }
 
 export function buildRunFacts(args: CaptureArgs): RunFacts {
@@ -116,6 +118,30 @@ export function buildRunFacts(args: CaptureArgs): RunFacts {
       sceneLightChoice: args.scene?.sceneLights.choice ?? null,
       ballisticChoice: args.scene?.ballistic.choice ?? null,
     },
+    treatment: args.treatment
+      ? {
+          actionsPerformed: Object.entries(args.treatment.actions).map(([id, a]) => ({
+            id,
+            status: a.status,
+            completedAtSecond: a.completedAtSecond ?? null,
+            detail: a.detail ?? null,
+          })),
+          scopeOverrides: Object.entries(args.treatment.scopeOverrides)
+            .filter(([, authorized]) => authorized)
+            .map(([id]) => id),
+          aed: args.treatment.aed
+            ? {
+                stage: args.treatment.aed.stage,
+                cycles: args.treatment.aed.cycles.map((c) => ({ ...c })),
+                stageStartedAtSecond: args.treatment.aed.stageStartedAtSecond ?? null,
+                cprStartedAtSecond: args.treatment.aed.cprStartedAtSecond ?? null,
+              }
+            : null,
+          reassessCount: args.treatment.reassessCount,
+          lastReassessedAtSecond: args.treatment.lastReassessedAtSecond ?? null,
+          events: args.treatment.events.map((e) => ({ id: e.id, atSecond: e.atSecond })),
+        }
+      : undefined,
     crew: { assignments },
     dynamics: { issues: dynIssues },
     clinical: {

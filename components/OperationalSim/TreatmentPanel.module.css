@@ -1,0 +1,201 @@
+.lockedNote {
+  color: var(--fg-muted);
+  font-size: 0.85rem;
+}
+
+/* ---- Reassess Patient card (§2) ---- */
+.reassessCard {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.85rem 1rem;
+  margin-bottom: 1rem;
+  background-color: var(--bg);
+}
+
+.reassessHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.5rem;
+}
+
+.reassessTitle {
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+
+.conditionGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 0.4rem;
+  margin-bottom: 0.5rem;
+}
+
+.conditionRow {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.4rem 0.6rem;
+  font-size: 0.85rem;
+}
+
+.conditionLabel {
+  font-weight: 600;
+  font-size: 0.78rem;
+  color: var(--fg-muted);
+}
+
+.conditionSource {
+  font-size: 0.7rem;
+  color: var(--status-info);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-top: 0.15rem;
+}
+
+/* ---- Category / treatment cards ---- */
+.category {
+  margin-top: 1rem;
+}
+
+.categoryTitle {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--fg-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 0.5rem;
+}
+
+.treatmentGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 0.5rem;
+  align-items: start;
+}
+
+.treatmentCard {
+  display: flex;
+  flex-direction: column;
+}
+
+.treatmentButton {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  text-align: left;
+  padding: 0.6rem 0.7rem;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background-color: var(--bg);
+  color: var(--fg);
+  font-size: 0.9rem;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.treatmentButton:hover {
+  border-color: var(--fg-muted);
+}
+
+.treatmentButton[aria-expanded='true'] {
+  border-color: var(--status-info);
+  background-color: color-mix(in srgb, var(--status-info) 10%, transparent);
+}
+
+.treatmentDone {
+  border-color: var(--status-safe);
+}
+
+.scopeTag {
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 0.15rem 0.45rem;
+  border-radius: 999px;
+  border: 1px solid var(--status-pending);
+  color: var(--status-pending);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.doneTag {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--status-safe);
+}
+
+.treatmentDetail {
+  margin-top: 0.4rem;
+  border: 1px dashed var(--status-info);
+  border-radius: 6px;
+  padding: 0.6rem;
+}
+
+.subFlow {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.settingRow {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.settingLabel {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--fg-muted);
+}
+
+.numberInput {
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 0.3rem 0.5rem;
+  background-color: var(--surface);
+  color: var(--fg);
+  font-family: inherit;
+  font-size: 0.9rem;
+  width: 6rem;
+}
+
+.slider {
+  width: 100%;
+}
+
+.rateValue {
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+
+/* ---- AED (§9) ---- */
+.aedStatusRow {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.aedStatus {
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+
+.aedShock {
+  color: var(--status-critical);
+}
+
+.cprTimer {
+  font-variant-numeric: tabular-nums;
+  font-weight: 800;
+  font-size: 1.1rem;
+  padding: 0.4rem 0.7rem;
+  border-radius: 6px;
+  border: 1px solid var(--status-critical);
+  color: var(--status-critical);
+  width: fit-content;
+}

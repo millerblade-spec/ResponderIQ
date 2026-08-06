@@ -59,6 +59,67 @@ const transportSchema = z
   })
   .strict();
 
+/** A single treatment action's recorded outcome (Treatment Engine v1, §1-§9). */
+const treatmentActionDetailSchema = z.union([
+  z
+    .object({
+      kind: z.literal('oxygen'),
+      deviceId: z.string().max(80),
+      flowRateLpm: z.number().finite().optional(),
+      peep: z.union([z.literal(0), z.literal(5), z.literal(8)]).optional(),
+    })
+    .strict(),
+  z
+    .object({
+      kind: z.literal('iv_access'),
+      method: z.enum(['peripheral_iv', 'ez_io']),
+      site: z.string().max(80).optional(),
+      success: z.boolean(),
+    })
+    .strict(),
+  z.object({ kind: z.literal('infusion'), rate: z.number().finite() }).strict(),
+  z.object({ kind: z.literal('pain_med') }).strict(),
+]);
+
+const treatmentActionSchema = z
+  .object({
+    id: z.string().max(80),
+    status: z.enum(['not_started', 'in_progress', 'complete']),
+    completedAtSecond: z.number().int().min(0).max(86_400).nullable(),
+    detail: treatmentActionDetailSchema.nullable(),
+  })
+  .strict();
+
+const aedCycleSchema = z
+  .object({
+    shockAdvised: z.boolean(),
+    shocked: z.boolean(),
+    atSecond: z.number().int().min(0).max(86_400),
+  })
+  .strict();
+
+const aedStateSchema = z
+  .object({
+    stage: z.enum(['idle', 'analyzing', 'shock_advised', 'no_shock_advised', 'charging', 'shock_delivered', 'cpr']),
+    cycles: z.array(aedCycleSchema).max(50),
+    stageStartedAtSecond: z.number().int().min(0).max(86_400).nullable(),
+    cprStartedAtSecond: z.number().int().min(0).max(86_400).nullable(),
+  })
+  .strict();
+
+/** Treatment Engine v1 (§1-§10): treatments recorded, per-skill scope overrides, the AED cycle, and reassessment count. */
+const treatmentSchema = z
+  .object({
+    actionsPerformed: z.array(treatmentActionSchema).max(100),
+    /** Treatment ids an EMT-tier learner was authorized to perform off-scope, per skill (§4). */
+    scopeOverrides: z.array(z.string().max(80)).max(50),
+    aed: aedStateSchema.nullable(),
+    reassessCount: z.number().int().min(0).max(100),
+    lastReassessedAtSecond: z.number().int().min(0).max(86_400).nullable(),
+    events: z.array(z.object({ id: z.string().max(80), atSecond: z.number().int().min(0).max(86_400) }).strict()).max(200),
+  })
+  .strict();
+
 /**
  * The AI Ron conversational debrief record. This conversation IS the detailed
  * record of the run's evaluation — the questions Ron asked about the learner's
@@ -206,6 +267,7 @@ export const operationalRunSchema = z
     floorArrival: floorArrivalSchema.optional(),
     transport: transportSchema.optional(),
     ronDebrief: ronDebriefSchema.optional(),
+    treatment: treatmentSchema.optional(),
     reflection: responses,
     feedback: responses,
   })

@@ -19,6 +19,8 @@ import type { SceneConfig } from '@/lib/opsim/scene';
 import type { DifficultyName } from '@/lib/opsim/dynamics';
 import { bls01Clinical } from '@/lib/opsim/clinical';
 import type { ClinicalModel } from '@/lib/opsim/clinical';
+import { bls01TreatmentConfig, bls01TreatmentModel } from '@/lib/scenarios/bls-01.treatment';
+import type { TreatmentConfig, TreatmentModel } from '@/lib/opsim/treatment';
 import { fireResponseFor, type CallType } from '@/lib/opsim/crew';
 import { PROVISIONAL_LEARNER_ID } from '@/lib/opsim/constants';
 import { OnSceneOps } from './OnSceneOps';
@@ -60,6 +62,10 @@ interface OperationalSimProps {
   readonly distractions?: readonly ScenarioDistraction[];
   readonly dynamicsDifficulty?: DifficultyName;
   readonly clinicalModel?: ClinicalModel;
+  /** Treatment Engine v1 scenario data — the learner's certification tier and enabled treatments. */
+  readonly treatmentConfig?: TreatmentConfig;
+  /** Treatment Engine v1 scenario data — reassessment content, protocol doses, AED shockability. */
+  readonly treatmentModel?: TreatmentModel;
   /** Seconds after on-scene before fire arrives; 0 = with the medics (fix #8 hook). */
   readonly fireArrivalDelaySeconds?: number;
   /** Injectable for tests; defaults to a real system-clock-backed MissionClock. */
@@ -98,6 +104,8 @@ export function OperationalSim({
   distractions = bls01Distractions,
   dynamicsDifficulty = bls01DynamicsDifficulty,
   clinicalModel = bls01Clinical,
+  treatmentConfig = bls01TreatmentConfig,
+  treatmentModel = bls01TreatmentModel,
   fireArrivalDelaySeconds = bls01FireArrivalDelaySeconds,
   clock,
   ticking = true,
@@ -277,6 +285,8 @@ export function OperationalSim({
             distractions={distractions}
             scene={scene}
             clinicalModel={clinicalModel}
+            treatmentConfig={treatmentConfig}
+            treatmentModel={treatmentModel}
             initialDifferential={state.differential.ranking}
             differentialChoices={choices}
             scenarioId={scenarioId}
