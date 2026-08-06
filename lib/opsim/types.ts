@@ -15,10 +15,9 @@ export type ResponseStatus = 'responding' | 'on_scene';
 
 export type OpSimStage =
   | 'dispatch' // 3s tone playing / dispatch info shown; mission clock running
-  | 'differential' // WHAT ARE YOU PREPARING FOR? open
-  | 'awaiting_equipment' // differential ended; Ron's 3s pause before the equipment question
-  | 'equipment' // equipment-selection interface open
-  | 'ready'; // equipment confirmed — end of this slice
+  | 'differential' // WHAT ARE YOU PREPARING FOR? open (or locked in, still en route)
+  | 'parking' // ON SCENE the moment the differential timer ends — where do we park?
+  | 'ready'; // parked — on-scene operations begin (windshield first)
 
 export interface DispatchInfo {
   readonly unit: string; // always "Medic 3" (§5, §7)
@@ -46,12 +45,25 @@ export interface DifferentialState {
 }
 
 export interface EquipmentState {
-  /** True once Ron has asked the equipment question (3s after the differential ends, §9). */
+  /** True once Ron has asked "what do you want to bring in?" (§9). */
   readonly promptShown: boolean;
   readonly open: boolean;
   /** Ids the learner chose to bring in — immediately available on scene (§9). */
   readonly selected: readonly string[];
   readonly confirmed: boolean;
+}
+
+/** A parking option relative to the apartment building (asked on arrival, not derived). */
+export interface ParkingOption {
+  readonly id: string;
+  readonly label: string;
+  /** What the spot trades off — shown to the learner before choosing. */
+  readonly detail: string;
+}
+
+export interface ParkingState {
+  readonly open: boolean;
+  readonly choice?: string;
 }
 
 export interface OpSimState {
@@ -61,7 +73,7 @@ export interface OpSimState {
   readonly toneComplete: boolean;
   readonly responseStatus: ResponseStatus;
   readonly differential: DifferentialState;
-  readonly equipment: EquipmentState;
+  readonly parking: ParkingState;
 }
 
 /** After equipment is confirmed: what is on scene vs still on Medic 3 (needing the 45s retrieval, §9). */

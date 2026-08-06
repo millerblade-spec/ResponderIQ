@@ -59,6 +59,7 @@ export function ScenarioRunner({
       <OperationalSim
         scenarioId={scenarioId}
         level={level}
+        learnerId={learnerId}
         scene={scene}
         callType={callType}
         distractions={advanced ? bls01AdvancedDistractions : bls01Distractions}

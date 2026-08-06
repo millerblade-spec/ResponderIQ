@@ -414,7 +414,10 @@ export function getSceneNarrative(state: SceneState): string {
         ? 'You arrive at a narrow three-story walkup. A man in his 30s meets you at the base of the stairs, talking fast: "He\u2019s fine, he just needs help standing, why is this taking so long?"'
         : 'The son has calmed down. He tells you his father mentioned feeling dizzy right before he went down \u2014 he didn\u2019t actually see the fall happen, he was in the next room.';
     case 'assessment':
-      return 'Third-floor landing. He\u2019s alert, oriented, in pain, and reluctant to put weight on one leg. The stairwell is narrow.';
+      // The patient is INSIDE his apartment, not on the landing. His own TV is
+      // still on from before he fell, and the door stands open because the son
+      // came down to meet the crew and didn't shut it behind him.
+      return 'Inside the apartment \u2014 the door was standing open (the son left it that way coming down to meet you), and his TV is still going from before he fell. He\u2019s on the living-room floor: alert, oriented, in pain, and reluctant to put weight on one leg. The stairwell behind you is narrow.';
     case 'resolution':
       return 'He\u2019s at the bottom of the stairs, on the stair chair, ready for the ambulance.';
     case 'complete':

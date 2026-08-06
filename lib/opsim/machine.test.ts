@@ -7,9 +7,7 @@ import {
   canFinalizeDifferential,
   finalizeDifferential,
   arriveOnScene,
-  showEquipmentPrompt,
-  toggleEquipment,
-  confirmEquipment,
+  chooseParking,
   equipmentAvailability,
   rankedTop,
 } from './machine';
@@ -37,11 +35,6 @@ describe('opsim machine — dispatch & response (§7)', () => {
     expect(s.toneComplete).toBe(true);
     expect(s.stage).toBe('differential');
     expect(s.differential.open).toBe(true);
-  });
-
-  it('stops beacons and goes ON SCENE on arrival (§7)', () => {
-    const s = arriveOnScene(completeTone(seed()));
-    expect(s.responseStatus).toBe('on_scene');
   });
 });
 
@@ -95,14 +88,16 @@ describe('opsim machine — differential challenge (§8)', () => {
     expect(s.differential.selected.slice(4)).toEqual(['e', 'f']); // considered
   });
 
-  it('finalizes by choice with four selections and records it was not a timeout', () => {
+  it('locking in early closes the modal but does NOT arrive early (fix #2)', () => {
     let s = completeTone(seed());
     s = selectAll(s, ['a', 'b', 'c', 'd']);
     s = finalizeDifferential(s, { timeout: false });
     expect(s.differential.finalized).toBe(true);
     expect(s.differential.finalizedByTimeout).toBe(false);
     expect(s.differential.open).toBe(false);
-    expect(s.stage).toBe('awaiting_equipment');
+    // Still en route — arrival is pinned to the timer's end.
+    expect(s.responseStatus).toBe('responding');
+    expect(s.stage).toBe('differential');
   });
 
   it('on timeout saves partial work even below the minimum, and marks it a timeout', () => {
@@ -112,43 +107,58 @@ describe('opsim machine — differential challenge (§8)', () => {
     expect(s.differential.finalized).toBe(true);
     expect(s.differential.finalizedByTimeout).toBe(true);
     expect(s.differential.selected).toEqual(['a', 'b']); // preserved, not discarded
-    expect(s.stage).toBe('awaiting_equipment');
   });
 });
 
-describe('opsim differential timer resolves from approved config (§8)', () => {
-  it('is 15 seconds at Orientation', () => {
-    expect(differentialTimerSeconds('orientation')).toBe(15);
+describe('opsim differential timer resolves from approved config (§8, fix #1)', () => {
+  it('is 20 seconds at Orientation', () => {
+    expect(differentialTimerSeconds('orientation')).toBe(20);
   });
   it('is 10 seconds above Orientation', () => {
     expect(differentialTimerSeconds('advanced')).toBe(10);
   });
+  it('is 25 seconds the very first time a learner reaches the page, at any level', () => {
+    expect(differentialTimerSeconds('orientation', undefined, true)).toBe(25);
+    expect(differentialTimerSeconds('advanced', undefined, true)).toBe(25);
+  });
 });
 
-describe('opsim machine — equipment selection (§9)', () => {
-  function throughDifferential() {
+describe('opsim machine — arrival & parking (fixes #2, #3)', () => {
+  function atDeadline() {
     let s = completeTone(seed());
     s = selectAll(s, ['a', 'b', 'c', 'd']);
-    return finalizeDifferential(s, { timeout: false });
+    s = finalizeDifferential(s, { timeout: false });
+    return arriveOnScene(s);
   }
 
-  it('shows Ron’s prompt and opens equipment only after the differential ends', () => {
-    const before = throughDifferential();
-    expect(before.equipment.promptShown).toBe(false);
-    const s = showEquipmentPrompt(before);
-    expect(s.equipment.promptShown).toBe(true);
-    expect(s.equipment.open).toBe(true);
-    expect(s.stage).toBe('equipment');
+  it('the moment the timer ends: ON SCENE, beacons off, parking question open', () => {
+    const s = atDeadline();
+    expect(s.responseStatus).toBe('on_scene');
+    expect(s.stage).toBe('parking');
+    expect(s.parking.open).toBe(true);
   });
 
-  it('selected equipment is immediately on scene; everything else stays on Medic 3 for 45s retrieval', () => {
-    let s = showEquipmentPrompt(throughDifferential());
-    s = toggleEquipment(s, 'als_bag');
-    s = toggleEquipment(s, 'cardiac_monitor');
-    s = confirmEquipment(s);
-    expect(s.stage).toBe('ready');
+  it('arrival is idempotent', () => {
+    const s = atDeadline();
+    expect(arriveOnScene(s)).toBe(s);
+  });
 
-    const avail = equipmentAvailability(s, EQUIPMENT_CATALOG);
+  it('choosing a parking spot records it and starts on-scene ops', () => {
+    const s = chooseParking(atDeadline(), 'across_street');
+    expect(s.parking.choice).toBe('across_street');
+    expect(s.parking.open).toBe(false);
+    expect(s.stage).toBe('ready');
+  });
+
+  it('the parking choice cannot be changed after the fact', () => {
+    const s = chooseParking(atDeadline(), 'across_street');
+    expect(chooseParking(s, 'front_entrance')).toBe(s);
+  });
+});
+
+describe('opsim equipment availability (§9)', () => {
+  it('selected equipment is on scene; everything else stays on Medic 3 for the 45s walk-back', () => {
+    const avail = equipmentAvailability(['als_bag', 'cardiac_monitor'], EQUIPMENT_CATALOG);
     expect(avail.onScene).toEqual(['als_bag', 'cardiac_monitor']);
     expect(avail.onMedic3).toContain('portable_suction');
     expect(avail.onScene).not.toContain('portable_suction');

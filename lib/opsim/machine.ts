@@ -1,10 +1,16 @@
 /**
- * Pure, typed state transitions for the dispatch → equipment sequence (§7–§9).
+ * Pure, typed state transitions for the dispatch → arrival sequence (§7–§9).
  *
  * Every function takes a state and returns a new state — no timers, no React,
  * no side effects. The orchestrator (components/OperationalSim) schedules WHEN
  * these fire via the mission clock; this module decides only WHAT each
  * transition does. That split is what makes the whole sequence unit-testable.
+ *
+ * Sequence: dispatch tone → differential (locking in early does NOT arrive
+ * early; the unit stays Code 3 until the timer ends) → the moment the timer
+ * ends, ON SCENE with beacons off → parking prompt → ready (on-scene ops).
+ * Equipment selection now happens later, inside the scene-safety flow
+ * (sceneMachine.ts), when the crew actually steps out of the unit.
  */
 import { DEFAULT_SIMULATOR_CONFIG, type SimulatorConfig } from '@/lib/engine/config';
 import type { EquipmentItem } from './equipment';
@@ -25,11 +31,8 @@ export function createInitialOpSimState(scenarioId: string, level: DifficultyLev
       finalized: false,
       finalizedByTimeout: false,
     },
-    equipment: {
-      promptShown: false,
+    parking: {
       open: false,
-      selected: [],
-      confirmed: false,
     },
   };
 }
@@ -85,6 +88,7 @@ export function canFinalizeDifferential(
  * Ends the differential challenge. Manual finalize requires the minimum
  * selections; a timeout finalize saves whatever the learner has so far —
  * partial work is preserved, and correctness is never revealed (§8).
+ * Locking in early keeps the unit responding; arrival is pinned to the timer.
  */
 export function finalizeDifferential(
   state: OpSimState,
@@ -95,7 +99,6 @@ export function finalizeDifferential(
   if (!opts.timeout && !canFinalizeDifferential(state, config)) return state;
   return {
     ...state,
-    stage: 'awaiting_equipment',
     differential: {
       ...state.differential,
       open: false,
@@ -105,54 +108,44 @@ export function finalizeDifferential(
   };
 }
 
-/** Medic 3 arrives: beacons stop, status becomes ON SCENE (§7). */
+/**
+ * The differential timer ends: Medic 3 is ON SCENE that same moment — beacons
+ * off — and the parking question opens (where do we park, relative to the
+ * building?). The windshield view follows the learner's answer; it is never
+ * derived silently.
+ */
 export function arriveOnScene(state: OpSimState): OpSimState {
   if (state.responseStatus === 'on_scene') return state;
-  return { ...state, responseStatus: 'on_scene' };
-}
-
-/** Ron's equipment question fires 3s after the differential ends, opening the selector (§9). */
-export function showEquipmentPrompt(state: OpSimState): OpSimState {
-  if (state.stage !== 'awaiting_equipment') return state;
   return {
     ...state,
-    stage: 'equipment',
-    equipment: { ...state.equipment, promptShown: true, open: true },
+    responseStatus: 'on_scene',
+    stage: 'parking',
+    parking: { ...state.parking, open: true },
   };
 }
 
-/** Toggles a piece of equipment in/out of what the learner brings in. */
-export function toggleEquipment(state: OpSimState, id: string): OpSimState {
-  if (state.stage !== 'equipment' || state.equipment.confirmed) return state;
-  const selected = state.equipment.selected.includes(id)
-    ? state.equipment.selected.filter((x) => x !== id)
-    : [...state.equipment.selected, id];
-  return { ...state, equipment: { ...state.equipment, selected } };
-}
-
-/** Confirms the equipment choice; selected items are now immediately available on scene (§9). */
-export function confirmEquipment(state: OpSimState): OpSimState {
-  if (state.stage !== 'equipment') return state;
+/** Records where the learner parked; on-scene operations (windshield first) begin. */
+export function chooseParking(state: OpSimState, optionId: string): OpSimState {
+  if (state.stage !== 'parking' || state.parking.choice !== undefined) return state;
   return {
     ...state,
     stage: 'ready',
-    equipment: { ...state.equipment, confirmed: true, open: false },
+    parking: { open: false, choice: optionId },
   };
 }
 
 /**
- * What is available on scene vs still on Medic 3 after equipment is confirmed.
- * Unselected items stay on the truck and later require the approved 45s
- * retrieval (§9) — the metadata is established here; the personnel-fetch
- * workflow itself is built in the crew-assignment slice.
+ * What is available on scene vs still on Medic 3 after equipment is chosen
+ * (in the scene-safety flow). Unselected items stay on the truck and later
+ * cost the 45s walk-back (§9) — a realistic consequence, not a penalty.
  */
 export function equipmentAvailability(
-  state: OpSimState,
+  selected: readonly string[],
   catalog: readonly EquipmentItem[],
   config: SimulatorConfig = DEFAULT_SIMULATOR_CONFIG,
 ): EquipmentAvailability {
-  const onScene = catalog.filter((e) => state.equipment.selected.includes(e.id)).map((e) => e.id);
-  const onMedic3 = catalog.filter((e) => !state.equipment.selected.includes(e.id)).map((e) => e.id);
+  const onScene = catalog.filter((e) => selected.includes(e.id)).map((e) => e.id);
+  const onMedic3 = catalog.filter((e) => !selected.includes(e.id)).map((e) => e.id);
   return { onScene, onMedic3, retrievalSeconds: config.timing.equipmentRetrievalSeconds };
 }
 

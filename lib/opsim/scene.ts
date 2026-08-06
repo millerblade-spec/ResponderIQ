@@ -41,11 +41,14 @@ export const WINDSHIELD_FACTOR_LIBRARY: readonly WindshieldFactor[] = [
       'Poor visibility', 'Extreme heat', 'Standing water', 'Flooding',
     ] as const
   ).map((label) => factor('lighting_weather', label)),
-  // road & access
+  // road & access (includes property-upkeep reads — a rough road, an unkempt
+  // yard, and scattered debris are neglect indicators that feed "is this scene
+  // safe", not just driving hazards)
   ...(
     [
       'Potholes', 'Mud', 'Broken glass', 'Debris', 'Blocked access', 'Narrow driveway',
       'Unsafe shoulder', 'Heavy traffic', 'Limited escape route', 'Poor unit positioning',
+      'Unkempt lawn', 'Cans and litter in the yard',
     ] as const
   ).map((label) => factor('road_access', label)),
   // utility
@@ -68,6 +71,7 @@ export const WINDSHIELD_FACTOR_LIBRARY: readonly WindshieldFactor[] = [
       'Visible weapons', 'Armed people', 'Fighting', 'Aggressive crowd', 'Person yelling or pacing',
       'Intoxicated bystanders', 'Uncontrolled animals', 'Someone blocking access',
       'Police actively searching', 'Bystanders surrounding the patient',
+      'Group of people near the entrance',
     ] as const
   ).map((label) => factor('behavioral_security', label)),
 ];
@@ -124,12 +128,14 @@ export type BallisticPpeChoice = (typeof BALLISTIC_PPE_OPTIONS)[number]['id'];
 
 export const RON_SCENE_LINES = {
   windshield: 'Alright, partner. Before we get out—what do you see? Are we safe to enter?',
-  sceneLightsDark: 'Partner, it’s pretty dark out here. Want the scene lights on?',
+  sceneLightsDark: 'Partner, it’s pretty dark out here. Do you think we need to add scene lights?',
   sceneLightsRain:
     'It’s coming down pretty good. Want the scene lights on so we can see—and so they can see us?',
   weatherGear: 'It’s coming down pretty hard. Let’s get our rain gear and scene lights on before we step out.',
   ballistic: 'Partner, this is a shooting scene. Do you want our vests and helmets on?',
   clearedToEnter: 'Medic 3, the scene is secure. You’re clear to enter.',
+  floorArrival:
+    'Okay, this is his floor—take a quick read before we go in. How’s the light up here? And that door’s standing open.',
 } as const;
 
 export const SAFE_TO_ENTER = 'Safe to Enter';

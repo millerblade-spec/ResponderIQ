@@ -84,6 +84,11 @@ export const PATIENT_CARE_TASKS: readonly TaskDef[] = [
   { id: 'control_bleeding', label: 'Control bleeding', category: 'patient_care', durationSeconds: 60 },
   { id: 'assist_ventilation', label: 'Assist ventilation', category: 'patient_care' },
   { id: 'interview_patient', label: 'Interview patient', category: 'patient_care', durationSeconds: 60, revealsClinical: true },
+  // Delegated by design (fix #11): the lead medic assesses while SOMEONE ELSE
+  // calms the patient and explains what's happening.
+  { id: 'calm_patient_explain', label: 'Calm the patient & explain what’s happening', category: 'patient_care', durationSeconds: 45 },
+  { id: 'confirm_abc', label: 'Confirm ABCs (he’s talking)', category: 'patient_care', durationSeconds: 5, revealsClinical: true },
+  { id: 'ask_worst_pain', label: 'Ask what hurts most', category: 'patient_care', durationSeconds: 10, revealsClinical: true },
   { id: 'focused_assessment', label: 'Perform focused assessment', category: 'patient_care', durationSeconds: 90, revealsClinical: true },
   { id: 'reassess_patient', label: 'Reassess patient', category: 'patient_care', durationSeconds: 60, revealsClinical: true },
   { id: 'assist_movement', label: 'Assist with patient movement', category: 'patient_care', durationSeconds: 90 },

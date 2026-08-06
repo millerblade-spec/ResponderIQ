@@ -14,6 +14,7 @@ import {
   clearEngine as clearEngineFn,
   isLastFireResource as isLastFn,
   requestResource as requestResourceFn,
+  addEquipmentOnScene,
   type CrewState,
   type ClearEligibility,
 } from '@/lib/opsim/crewMachine';
@@ -37,6 +38,8 @@ export interface CrewController {
   readonly canClearEngine: (engineId: string) => ClearEligibility;
   readonly isLastFireResource: (engineId: string) => boolean;
   readonly requestResource: (resourceId: string) => void;
+  /** Delivers the equipment the crew carried in from the truck (§9). */
+  readonly deliverEquipment: (equipmentIds: readonly string[]) => void;
 }
 
 export function useCrew(
@@ -112,5 +115,6 @@ export function useCrew(
     canClearEngine: (engineId) => canClearEngineFn(crew, engineId),
     isLastFireResource: (engineId) => isLastFn(crew, engineId),
     requestResource: (resourceId) => setCrew(requestResourceFn(crew, resourceId)),
+    deliverEquipment: (equipmentIds) => setCrew((s) => addEquipmentOnScene(s, equipmentIds)),
   };
 }

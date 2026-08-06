@@ -3,6 +3,8 @@ import { render, screen, within, fireEvent, act } from '@testing-library/react';
 import { OperationalSim } from './OperationalSim';
 import { MissionClock, type TimeSource } from '@/lib/engine/missionClock';
 import { bls01Differentials } from '@/lib/scenarios/bls-01.dispatch';
+import { markDifferentialVisited } from '@/lib/opsim/firstVisit';
+import { PROVISIONAL_LEARNER_ID } from '@/lib/opsim/constants';
 
 class ManualTimeSource implements TimeSource {
   private t = 0;
@@ -14,8 +16,13 @@ class ManualTimeSource implements TimeSource {
   }
 }
 
-/** Renders with an injected, manually-driven clock (no real timers). */
-function renderSim(props: Partial<Parameters<typeof OperationalSim>[0]> = {}) {
+/**
+ * Renders with an injected, manually-driven clock (no real timers). By default
+ * the learner is marked as having visited before, so tests exercise the NORMAL
+ * 20s timer; first-visit tests clear that mark themselves.
+ */
+function renderSim(props: Partial<Parameters<typeof OperationalSim>[0]> = {}, opts: { firstVisit?: boolean } = {}) {
+  if (!opts.firstVisit) markDifferentialVisited(PROVISIONAL_LEARNER_ID);
   const source = new ManualTimeSource();
   const clock = new MissionClock(source);
   const utils = render(<OperationalSim clock={clock} ticking={false} {...props} />);
@@ -130,13 +137,15 @@ describe('OperationalSim — differential challenge (§8)', () => {
     expect(after).not.toEqual(before);
   });
 
-  it('keeps the mission clock running while the challenge is open (never pauses)', () => {
+  it('keeps the mission clock running and visible while the challenge is open (never pauses)', () => {
     const { advance, clock } = renderSim();
     toDifferential(advance);
     advance(4);
     expect(clock.elapsedSeconds()).toBe(7);
-    // Still open and counting — the clock did not pause for the popup.
+    // Still open and counting — the clock did not pause for the popup, and the
+    // running mission clock stays rendered throughout (fix #7).
     expect(screen.getByRole('dialog', { name: /what are you preparing for/i })).toBeInTheDocument();
+    expect(screen.getByText('Mission clock')).toBeInTheDocument();
   });
 
   it('never shows a score, grade, percentage, or points', () => {
@@ -148,13 +157,32 @@ describe('OperationalSim — differential challenge (§8)', () => {
   });
 });
 
-describe('OperationalSim — timers time out and save partial work (§8)', () => {
-  it('Orientation times out at 15 seconds after the differential opens (tone 3s + 15s)', () => {
+describe('OperationalSim — timers time out and save partial work (§8, fix #1)', () => {
+  it('Orientation times out at 20 seconds after the differential opens (tone 3s + 20s)', () => {
     const { advance } = renderSim({ level: 'orientation' });
     advance(3); // opens at t=3
-    advance(14); // t=17, still open
+    advance(19); // t=22, still open
     expect(screen.getByRole('dialog', { name: /what are you preparing for/i })).toBeInTheDocument();
-    advance(1); // t=18 -> timeout
+    advance(1); // t=23 -> timeout
+    expect(screen.queryByRole('dialog', { name: /what are you preparing for/i })).toBeNull();
+  });
+
+  it('a learner’s very first visit to the differential page gets 25 seconds (tone 3s + 25s)', () => {
+    const { advance } = renderSim({ level: 'orientation' }, { firstVisit: true });
+    advance(3); // opens at t=3
+    advance(24); // t=27, still open — longer than the normal 20s window
+    expect(screen.getByRole('dialog', { name: /what are you preparing for/i })).toBeInTheDocument();
+    advance(1); // t=28 -> timeout
+    expect(screen.queryByRole('dialog', { name: /what are you preparing for/i })).toBeNull();
+  });
+
+  it('the first visit is tracked per-user: the second run is back to the normal window', () => {
+    const first = renderSim({ level: 'orientation' }, { firstVisit: true });
+    first.advance(3); // the tone marks the visit
+    first.unmount();
+    const { advance } = renderSim({ level: 'orientation' }, { firstVisit: true }); // no re-clear — storage persists
+    advance(3);
+    advance(20); // t=23 -> normal 20s timeout applies
     expect(screen.queryByRole('dialog', { name: /what are you preparing for/i })).toBeNull();
   });
 
@@ -172,56 +200,48 @@ describe('OperationalSim — timers time out and save partial work (§8)', () =>
     advance(3);
     const buttons = within(diffGroup()).getAllByRole('button');
     [0, 1].forEach((i) => fireEvent.click(buttons[i])); // only two
-    advance(15); // timeout at t=18
+    advance(20); // timeout at t=23
     expect(screen.queryByRole('dialog', { name: /what are you preparing for/i })).toBeNull();
     expect(screen.getByText('ON SCENE')).toBeInTheDocument(); // arrived, did not get stuck
   });
 });
 
-describe('OperationalSim — arrival & equipment (§7, §9)', () => {
-  function throughDifferential(advance: (s: number) => void) {
+describe('OperationalSim — arrival & parking (fixes #2, #3)', () => {
+  function lockInEarly(advance: (s: number) => void) {
     advance(3);
     const buttons = within(diffGroup()).getAllByRole('button');
     [0, 1, 2, 3].forEach((i) => fireEvent.click(buttons[i]));
     fireEvent.click(screen.getByRole('button', { name: /lock in/i }));
   }
 
-  it('stops the beacons and shows ON SCENE on arrival', () => {
+  it('locking in early keeps the unit RESPONDING — arrival waits for the timer', () => {
     const { advance } = renderSim();
-    throughDifferential(advance);
+    lockInEarly(advance);
+    expect(screen.queryByRole('dialog', { name: /what are you preparing for/i })).toBeNull();
+    expect(screen.getByText('RESPONDING · CODE 3')).toBeInTheDocument();
+    expect(screen.queryByText('ON SCENE')).toBeNull();
+  });
+
+  it('the moment the timer ends: beacons off, ON SCENE, and the parking question opens', () => {
+    const { advance } = renderSim();
+    lockInEarly(advance);
+    advance(20); // deadline at t=23
     expect(screen.queryByRole('status', { name: /responding code 3/i })).toBeNull();
     expect(screen.getByText('ON SCENE')).toBeInTheDocument();
+    expect(screen.getByText(/where do you want me to put the truck/i)).toBeInTheDocument();
   });
 
-  it('opens Ron’s equipment question exactly three seconds after the differential ends', () => {
+  it('choosing a parking spot records it and begins on-scene operations at the windshield', () => {
     const { advance } = renderSim();
-    throughDifferential(advance);
-    expect(screen.queryByText(/what equipment do you want to take in/i)).toBeNull();
-    advance(2);
-    expect(screen.queryByText(/what equipment do you want to take in/i)).toBeNull();
-    advance(1); // +3s total
-    expect(screen.getByText(/what equipment do you want to take in/i)).toBeInTheDocument();
-  });
-
-  it('offers every approved equipment option', () => {
-    const { advance } = renderSim();
-    throughDifferential(advance);
-    advance(3);
-    const group = screen.getByRole('group', { name: /equipment options/i });
-    expect(within(group).getAllByRole('button')).toHaveLength(19);
-  });
-
-  it('selected equipment becomes immediately available on scene; unselected stays on Medic 3', () => {
-    const { advance } = renderSim();
-    throughDifferential(advance);
-    advance(3);
-    const group = screen.getByRole('group', { name: /equipment options/i });
-    fireEvent.click(within(group).getByRole('button', { name: /als bag/i }));
-    fireEvent.click(screen.getByRole('button', { name: /bring these in/i }));
-
+    lockInEarly(advance);
+    advance(20);
+    fireEvent.click(screen.getByRole('button', { name: /across the street/i }));
     const summary = screen.getByRole('region', { name: /on-scene summary/i });
-    expect(within(summary).getByText('ALS Bag')).toBeInTheDocument();
-    expect(within(summary).queryByText('Portable Suction')).toBeNull(); // still on Medic 3
+    expect(within(summary).getByText(/across the street/i)).toBeInTheDocument();
+    // On-scene ops open at the windshield assessment; equipment comes later,
+    // when the crew steps out of the unit (fix #6).
+    expect(screen.getByText(/are we safe to enter/i)).toBeInTheDocument();
+    expect(screen.queryByText(/what do you want to bring in/i)).toBeNull();
   });
 });
 

@@ -36,6 +36,72 @@ const criticalEventSchema = z
   })
   .strict();
 
+/** Where the learner parked relative to the building (BLS-01 fix #3). */
+const parkingSchema = z.object({ choice: z.string().max(80).nullable() }).strict();
+
+/** The quick read on the patient's floor before entering (BLS-01 fix #10). */
+const floorArrivalSchema = z.object({ lightingNoted: z.boolean(), doorNoted: z.boolean() }).strict();
+
+/** Packaging → descent → transfer → pain decision (BLS-01 fixes #12–#16). */
+const transportSchema = z
+  .object({
+    device: z.string().max(80).nullable(),
+    deviceNeededRetrieval: z.boolean(),
+    pelvicSupport: z.string().max(80).nullable(),
+    pelvicNeededRetrieval: z.boolean(),
+    fireAssistCount: z.number().int().min(0).max(20),
+    alsWorkupDone: z.boolean(),
+    rigidDeviceRemovedBeforeTransport: z.boolean().nullable(),
+    painMedicationGiven: z.boolean().nullable(),
+    events: z
+      .array(z.object({ id: z.string().max(80), atSecond: z.number().int().min(0).max(86_400) }).strict())
+      .max(100),
+  })
+  .strict();
+
+/**
+ * The AI Ron conversational debrief record. This conversation IS the detailed
+ * record of the run's evaluation — the questions Ron asked about the learner's
+ * actual choices, the learner's transcribed answers, and the point-by-point
+ * assessment of each. There is no hidden numeric score behind it. An
+ * institutional/educator view would surface exactly this structure later.
+ */
+const ronDebriefSchema = z
+  .object({
+    entries: z
+      .array(
+        z
+          .object({
+            questionId: z.string().max(80),
+            ronLine: z.string().max(600),
+            answerTranscript: z.string().max(4000),
+            inputMode: z.enum(['voice', 'typed']),
+            assessment: z
+              .object({
+                verdict: z.enum(['sound', 'partial', 'unclear']),
+                points: z
+                  .array(
+                    z
+                      .object({
+                        id: z.string().max(80),
+                        label: z.string().max(300),
+                        addressed: z.boolean(),
+                      })
+                      .strict(),
+                  )
+                  .max(20),
+              })
+              .strict(),
+            ronReply: z.string().max(600),
+          })
+          .strict(),
+      )
+      .max(30),
+    closingLine: z.string().max(600),
+    allSound: z.boolean(),
+  })
+  .strict();
+
 export const operationalRunSchema = z
   .object({
     evaluationId: z.string().uuid(),
@@ -135,6 +201,11 @@ export const operationalRunSchema = z
       })
       .strict(),
     criticalEvents: z.array(criticalEventSchema).max(50),
+    // Optional so pre-rebuild payloads (and other scenarios) stay valid.
+    parking: parkingSchema.optional(),
+    floorArrival: floorArrivalSchema.optional(),
+    transport: transportSchema.optional(),
+    ronDebrief: ronDebriefSchema.optional(),
     reflection: responses,
     feedback: responses,
   })

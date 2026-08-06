@@ -9,6 +9,7 @@ import type { CrewState } from './crewMachine';
 import type { SceneSafetyState } from './sceneMachine';
 import type { DynamicsState } from './dynamicsMachine';
 import type { ClinicalState } from './clinicalMachine';
+import type { TransportState } from './transportMachine';
 import type { RunFacts } from '@/components/RunComplete/RunComplete';
 
 export interface CaptureArgs {
@@ -18,10 +19,12 @@ export interface CaptureArgs {
   readonly totalSeconds: number;
   readonly initialDifferential: readonly string[];
   readonly equipmentSelected: readonly string[];
+  readonly parkingChoice?: string;
   readonly crew: CrewState;
   readonly scene?: SceneSafetyState;
   readonly dynamics?: DynamicsState;
   readonly clinical?: ClinicalState;
+  readonly transport?: TransportState;
 }
 
 export function buildRunFacts(args: CaptureArgs): RunFacts {
@@ -87,6 +90,24 @@ export function buildRunFacts(args: CaptureArgs): RunFacts {
       workingImpression: args.clinical?.differential.impression ?? null,
     },
     equipment: { selected: [...args.equipmentSelected], retrievals },
+    parking: { choice: args.parkingChoice ?? null },
+    floorArrival: {
+      lightingNoted: args.scene?.floor.lightingNoted ?? false,
+      doorNoted: args.scene?.floor.doorNoted ?? false,
+    },
+    transport: args.transport
+      ? {
+          device: args.transport.deviceId ?? null,
+          deviceNeededRetrieval: args.transport.deviceNeededRetrieval,
+          pelvicSupport: args.transport.pelvicSupportId ?? null,
+          pelvicNeededRetrieval: args.transport.pelvicNeededRetrieval,
+          fireAssistCount: args.transport.fireAssistCount,
+          alsWorkupDone: args.transport.alsWorkupDone,
+          rigidDeviceRemovedBeforeTransport: args.transport.rigidDeviceRemovedBeforeTransport,
+          painMedicationGiven: args.transport.painMedicationGiven,
+          events: args.transport.events.map((e) => ({ id: e.id, atSecond: e.atSecond })),
+        }
+      : undefined,
     sceneSafety: {
       windshieldReviewed: args.scene?.windshieldReviewed ?? false,
       dispatchStaging: args.scene?.staging.staged === true && args.scene?.stage === 'staging',

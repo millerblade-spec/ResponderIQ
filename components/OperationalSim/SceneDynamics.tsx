@@ -35,6 +35,11 @@ interface SceneDynamicsProps {
   readonly clock: MissionClock;
   readonly difficulty: DifficultyName;
   readonly distractions: readonly ScenarioDistraction[];
+  /**
+   * Distractions only start once this is true (patient contact) — the TV and
+   * the anxious family are inside the apartment, not out at the truck (fix #9).
+   */
+  readonly active?: boolean;
   readonly simConfig?: SimulatorConfig;
   /** Reports the latest dynamics state up for run capture (§ Step 10). */
   readonly onStateChange?: (state: DynamicsState) => void;
@@ -51,6 +56,7 @@ export function SceneDynamics({
   clock,
   difficulty,
   distractions,
+  active = true,
   simConfig = DEFAULT_SIMULATOR_CONFIG,
   onStateChange,
 }: SceneDynamicsProps) {
@@ -59,11 +65,16 @@ export function SceneDynamics({
   const [blocked, setBlocked] = useState<Record<string, string>>({});
   const scheduledRef = useRef<number[]>([]);
   const resolutionRef = useRef<Record<string, number>>({});
+  const startedRef = useRef(false);
   const audioController = useAudioOptional()?.controller;
 
-  // Appearance + escalation scheduling. escalate() no-ops while managed/resolved
-  // or at the max stage, so a single recurring timer naturally pauses/resumes.
+  // Appearance + escalation scheduling, starting only once `active` (patient
+  // contact) and scheduled exactly once. escalate() no-ops while
+  // managed/resolved or at the max stage, so a single recurring timer
+  // naturally pauses/resumes.
   useEffect(() => {
+    if (!active || startedRef.current) return;
+    startedRef.current = true;
     for (const d of distractions) {
       const appearId = clock.after(d.appearAtSecond, () => {
         setDynamics((prev) => appearDistraction(prev, d.id, d.type, clock.elapsedSeconds()));
@@ -78,7 +89,7 @@ export function SceneDynamics({
     }
     const scheduled = scheduledRef.current;
     return () => scheduled.forEach((id) => clock.cancel(id));
-  }, [distractions, clock, simConfig, difficulty]);
+  }, [active, distractions, clock, simConfig, difficulty]);
 
   useEffect(() => {
     onStateChange?.(dynamics);

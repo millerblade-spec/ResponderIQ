@@ -13,6 +13,7 @@ import type { ScenarioDistraction } from '@/lib/scenarios/bls-01.dispatch';
 import type { SceneSafetyState } from '@/lib/opsim/sceneMachine';
 import type { DynamicsState } from '@/lib/opsim/dynamicsMachine';
 import type { ClinicalState } from '@/lib/opsim/clinicalMachine';
+import type { TransportState } from '@/lib/opsim/transportMachine';
 import { buildRunFacts } from '@/lib/opsim/captureRun';
 import type { RunFacts } from '@/components/RunComplete/RunComplete';
 import { useCrew } from './useCrew';
@@ -20,11 +21,10 @@ import { CrewOps } from './CrewOps';
 import { SceneSafety } from './SceneSafety';
 import { SceneDynamics } from './SceneDynamics';
 import { ClinicalPanel } from './ClinicalPanel';
-import opStyles from './OperationalSim.module.css';
+import { TransportOps } from './TransportOps';
 
 interface OnSceneOpsProps {
   readonly engines: readonly Apparatus[];
-  readonly equipmentOnScene: readonly string[];
   readonly clock: MissionClock;
   readonly difficulty: DifficultyName;
   readonly distractions: readonly ScenarioDistraction[];
@@ -34,17 +34,27 @@ interface OnSceneOpsProps {
   readonly differentialChoices: readonly DifferentialChoice[];
   readonly scenarioId: string;
   readonly runDifficulty: string;
+  /** Where the learner parked (fix #3) — recorded into the run facts. */
+  readonly parkingChoice?: string;
+  /**
+   * Seconds after on-scene before fire arrives. 0 at this base difficulty —
+   * fire pulls up WITH the medics (fix #8). A future higher-difficulty variant
+   * raises this to 15–30 without touching anything else.
+   */
+  readonly fireArrivalDelaySeconds?: number;
   readonly onComplete: (facts: RunFacts) => void;
 }
 
 /**
  * On-scene operations over ONE shared crew model (§19, §20). Owns the crew
- * controller and the clinical unlock, captures the live sub-states, and lets
- * the learner complete the run — assembling the full run facts for persistence.
+ * controller and the clinical unlock, captures the live sub-states, and hands
+ * off to the debrief when the transport sequence ends (the pain decision,
+ * fix #16). Equipment arrives from the scene-safety flow's "what do you want
+ * to bring in?" moment (§9), and scene distractions (the TV, the family) start
+ * at patient contact — they live inside the apartment, not on the street.
  */
 export function OnSceneOps({
   engines,
-  equipmentOnScene,
   clock,
   difficulty,
   distractions,
@@ -54,14 +64,18 @@ export function OnSceneOps({
   differentialChoices,
   scenarioId,
   runDifficulty,
+  parkingChoice,
+  fireArrivalDelaySeconds = 0,
   onComplete,
 }: OnSceneOpsProps) {
-  const controller = useCrew(engines, equipmentOnScene, clock);
+  const controller = useCrew(engines, [], clock, fireArrivalDelaySeconds);
   const audioController = useAudioOptional()?.controller;
   const [clinicalUnlocked, setClinicalUnlocked] = useState(false);
+  const [equipmentSelected, setEquipmentSelected] = useState<readonly string[]>([]);
   const sceneRef = useRef<SceneSafetyState | undefined>(undefined);
   const dynamicsRef = useRef<DynamicsState | undefined>(undefined);
   const clinicalRef = useRef<ClinicalState | undefined>(undefined);
+  const transportRef = useRef<TransportState | undefined>(undefined);
   const arrivalAudioRef = useRef(false);
 
   // Fire-engine arrival audio sequence, on the shared clock, played once (§11).
@@ -75,7 +89,8 @@ export function OnSceneOps({
     return () => ids.forEach((id) => clock.cancel(id));
   }, [controller.ronArrived, audioController, clock]);
 
-  function complete() {
+  function complete(transport: TransportState) {
+    transportRef.current = transport;
     const evaluationId =
       typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : '00000000-0000-4000-8000-000000000000';
     onComplete(
@@ -85,11 +100,13 @@ export function OnSceneOps({
         difficulty: runDifficulty,
         totalSeconds: clock.elapsedSeconds(),
         initialDifferential,
-        equipmentSelected: equipmentOnScene,
+        equipmentSelected,
+        parkingChoice,
         crew: controller.crew,
         scene: sceneRef.current,
         dynamics: dynamicsRef.current,
         clinical: clinicalRef.current,
+        transport,
       }),
     );
   }
@@ -103,12 +120,17 @@ export function OnSceneOps({
         onStateChange={(s) => {
           sceneRef.current = s;
         }}
+        onEquipmentConfirmed={(ids) => {
+          setEquipmentSelected(ids);
+          controller.deliverEquipment(ids);
+        }}
       />
       <SceneDynamics
         controller={controller}
         clock={clock}
         difficulty={difficulty}
         distractions={distractions}
+        active={clinicalUnlocked}
         onStateChange={(s) => {
           dynamicsRef.current = s;
         }}
@@ -126,15 +148,16 @@ export function OnSceneOps({
       />
       <CrewOps controller={controller} clock={clock} />
 
-      <section className={opStyles.panel} aria-label="Complete run">
-        <h2 className={opStyles.panelTitle}>Disposition</h2>
-        <p className={opStyles.instruction}>
-          When you have made your transport or disposition decision, complete the run to reflect and debrief.
-        </p>
-        <button type="button" className={opStyles.primaryButton} onClick={complete}>
-          Transport &amp; complete run
-        </button>
-      </section>
+      <TransportOps
+        controller={controller}
+        clock={clock}
+        unlocked={clinicalUnlocked}
+        model={clinicalModel}
+        onStateChange={(s) => {
+          transportRef.current = s;
+        }}
+        onRunComplete={complete}
+      />
     </>
   );
 }

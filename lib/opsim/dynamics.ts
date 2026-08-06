@@ -77,13 +77,17 @@ export const DISTRACTION_TYPES: Record<string, DistractionType> = {
       { description: 'Becoming verbally upset', severity: 'red', consequence: 'The disruption is delaying transport preparation.' },
     ],
     actions: [
-      selfImprove('calm', 'Calm the family'),
+      // First move for a disorderly family member is always "ask them to calm
+      // down"; police is the correct ESCALATION if they won't comply (fix #11).
+      // We're not here to fight — we're here to control the environment.
+      selfImprove('calm', 'Ask them to calm down'),
       selfImprove('explain', 'Explain what the crew is doing'),
       selfImprove('step_aside', 'Ask family to step aside'),
       assign('assign_ron', 'Assign Partner Ron to the family', 'manage_family'),
       assign('assign_fire', 'Assign fire personnel to the family', 'manage_family'),
       selfResolve('privacy', 'Request privacy for the patient'),
       selfImprove('boundary', 'Set a respectful boundary'),
+      { id: 'police', label: 'Call police (they won’t calm down)', kind: 'request_police' },
     ],
   },
   television: {
