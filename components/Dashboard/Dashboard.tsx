@@ -72,6 +72,9 @@ export function Dashboard() {
         <Link href="/instructions" className={styles.settingsLink}>
           Instructions &amp; general information
         </Link>
+        <Link href="/book" className={styles.settingsLink}>
+          Paramedic Book
+        </Link>
         <Link href="/settings" className={styles.settingsLink}>
           Settings
         </Link>

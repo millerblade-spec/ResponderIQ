@@ -72,6 +72,11 @@ describe('Dashboard', () => {
     expect(screen.getByRole('link', { name: 'Settings' })).toHaveAttribute('href', '/settings');
   });
 
+  it('links to the Paramedic Book', () => {
+    render(<Dashboard />);
+    expect(screen.getByRole('link', { name: 'Paramedic Book' })).toHaveAttribute('href', '/book');
+  });
+
   it('never shows a score, percentage, or points anywhere on the dashboard', () => {
     const state = stateWithCompletion({ status: 'transport_initiated', atMinute: 14 });
     window.localStorage.setItem(LOCAL_ADMIN_REVIEW_STORAGE_KEY, JSON.stringify(state));

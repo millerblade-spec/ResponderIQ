@@ -1,0 +1,337 @@
+/* globals.css centers `main` content both ways; this page is a full-width
+   reading layout, so it stretches its children and starts at the top. */
+.wrap {
+  width: 100%;
+  max-width: 1080px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+  gap: 1.25rem;
+}
+
+.header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.heading {
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.tagline {
+  color: var(--fg-muted);
+  font-size: 0.95rem;
+}
+
+/* Orange = caution / developing issue in the operational color system (§3),
+   paired with a text label and a glyph so color is never the only signal. */
+.disclaimer {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  background-color: var(--accent-muted);
+  border: 1px solid var(--status-caution);
+  border-radius: 6px;
+  padding: 0.85rem 1rem;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.disclaimerIcon {
+  color: var(--status-caution);
+  flex: none;
+  line-height: 1.5;
+}
+
+.disclaimerLabel {
+  font-weight: 700;
+  color: var(--status-caution);
+}
+
+.searchRow {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.searchLabel {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.searchInput {
+  width: 100%;
+  padding: 0.6rem 0.75rem;
+  font: inherit;
+  color: var(--fg);
+  background-color: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.searchInput:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.searchStatus {
+  color: var(--fg-muted);
+  font-size: 0.85rem;
+  min-height: 1.2em;
+}
+
+.body {
+  display: grid;
+  grid-template-columns: minmax(190px, 240px) 1fr;
+  gap: 1.25rem;
+  align-items: start;
+}
+
+.contents {
+  background-color: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: var(--panel-shadow);
+  padding: 1rem;
+  position: sticky;
+  top: 1rem;
+}
+
+.contentsTitle {
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--fg-muted);
+  margin-bottom: 0.6rem;
+}
+
+.contentsList {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.contentsLink {
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  font-size: 0.9rem;
+  color: var(--fg-muted);
+  background: none;
+  border: none;
+  border-left: 3px solid transparent;
+  border-radius: 0 4px 4px 0;
+  padding: 0.4rem 0.5rem;
+  cursor: pointer;
+}
+
+.contentsLink:hover {
+  color: var(--fg);
+  background-color: var(--accent-muted);
+}
+
+.contentsLinkActive {
+  color: var(--fg);
+  font-weight: 600;
+  border-left-color: var(--accent);
+  background-color: var(--accent-muted);
+}
+
+.content {
+  background-color: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: var(--panel-shadow);
+  padding: 1.5rem;
+  min-width: 0;
+}
+
+.sectionHeading {
+  font-size: 1.25rem;
+  font-weight: 700;
+  scroll-margin-top: 1rem;
+}
+
+.sectionPurpose {
+  color: var(--fg-muted);
+  font-size: 0.95rem;
+  line-height: 1.5;
+  margin-top: 0.35rem;
+}
+
+.entry {
+  border-top: 1px solid var(--border);
+  margin-top: 1.25rem;
+  padding-top: 1.25rem;
+  scroll-margin-top: 1rem;
+}
+
+.entryTitle {
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+.aka {
+  font-weight: 400;
+  color: var(--fg-muted);
+}
+
+.entrySummary {
+  color: var(--fg-muted);
+  font-size: 0.92rem;
+  line-height: 1.5;
+  margin-top: 0.25rem;
+}
+
+.points {
+  margin: 0.7rem 0 0 1.15rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  font-size: 0.92rem;
+  line-height: 1.55;
+}
+
+.drugCard {
+  margin-top: 0.8rem;
+  display: grid;
+  grid-template-columns: minmax(120px, max-content) 1fr;
+  gap: 0.4rem 1rem;
+  font-size: 0.92rem;
+  line-height: 1.55;
+}
+
+.drugCard dt {
+  font-weight: 700;
+  color: var(--status-info);
+}
+
+.drugCard dd .points {
+  margin-top: 0;
+}
+
+.results {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.result {
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  color: var(--fg);
+  background-color: transparent;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.7rem 0.85rem;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.result:hover {
+  border-color: var(--accent);
+  background-color: var(--accent-muted);
+}
+
+.resultCrumb {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--fg-muted);
+}
+
+.resultTitle {
+  font-weight: 700;
+  font-size: 0.98rem;
+}
+
+.resultSummary {
+  color: var(--fg-muted);
+  font-size: 0.88rem;
+  line-height: 1.45;
+}
+
+.empty {
+  color: var(--fg-muted);
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+.tableScroll {
+  overflow-x: auto;
+  margin-top: 1rem;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.tableCaption {
+  text-align: left;
+  color: var(--fg-muted);
+  font-size: 0.85rem;
+  padding-bottom: 0.5rem;
+}
+
+.table th,
+.table td {
+  border: 1px solid var(--border);
+  padding: 0.45rem 0.65rem;
+  text-align: left;
+  vertical-align: top;
+}
+
+/* Ranges must never wrap mid-value ("100-" / "180"); the headers may. */
+.table td {
+  white-space: nowrap;
+}
+
+.table thead th {
+  background-color: var(--accent-muted);
+  font-weight: 700;
+}
+
+.table tbody th {
+  font-weight: 600;
+}
+
+.backLink {
+  color: var(--fg-muted);
+  font-size: 0.9rem;
+  text-decoration: none;
+}
+
+.backLink:hover {
+  color: var(--fg);
+}
+
+@media (max-width: 720px) {
+  .body {
+    grid-template-columns: 1fr;
+  }
+
+  .contents {
+    position: static;
+  }
+
+  .drugCard {
+    grid-template-columns: 1fr;
+    gap: 0.15rem;
+  }
+
+  .drugCard dd {
+    margin-bottom: 0.5rem;
+  }
+}

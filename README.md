@@ -15,6 +15,23 @@ fall where the real challenge isn't the diagnosis: it's getting the patient thre
 flights down safely with the crew and equipment you brought or thought to call
 for. It's deliberately designed so more than one plan can succeed.
 
+## The Paramedic Book
+
+`/book` is an in-app paramedic field reference — scene size-up, patient
+assessment, airway, cardiac and 12-lead, trauma, medical emergencies, lifting
+and extrication, communication, plus a drug formulary and a vital-signs-by-age
+table — with ranked search across all of it.
+
+It deliberately lives on its own route rather than inside the simulator: it is
+study and pre-call material, and keeping a reference permanently open during an
+active call is the habit the simulator is built not to teach. Every page of it
+carries the same caution — it is training material, and agency protocols and
+medical direction govern the real call.
+
+The content is typed data in [`lib/book`](lib/book), and the ranking lives in
+`lib/book/search.ts` as a pure, unit-tested function, so the component only
+renders what search returns.
+
 ## Tech stack
 
 - [Next.js](https://nextjs.org) (App Router) + React
@@ -93,10 +110,11 @@ Scenarios live in [`lib/scenarios`](lib/scenarios); UI lives in
 ## Project layout
 
 ```
-app/            Next.js routes (home, dashboard, settings, scenarios, admin)
-components/     Reusable UI (Button, Card, SimulatorPlayer, AdminReview, AdminReviewList, LoginForm, Dashboard, Settings)
+app/            Next.js routes (home, dashboard, settings, scenarios, book, admin)
+components/     Reusable UI (Button, Card, SimulatorPlayer, ParamedicBook, AdminReview, AdminReviewList, LoginForm, Dashboard, Settings)
 lib/engine/     Simulation engine — clock, reducer, scoring, debrief
 lib/scenarios/  Scenario definitions (BLS-01)
+lib/book/       Paramedic Book reference content, formulary, vitals, and its search index
 lib/auth/       Password hashing, signed sessions, the DAL session check
 lib/db/         Postgres connection, schema, admin_users and review_records data access
 lib/review/     Save-request validation (zod) and the save Server Action
