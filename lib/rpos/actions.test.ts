@@ -61,6 +61,31 @@ describe('enrollResponder action', () => {
     expect(enrollLearner).not.toHaveBeenCalled();
   });
 
+  it('gives back what the user typed when it rejects, so the form does not wipe itself', async () => {
+    // React resets an uncontrolled form after a Server Action, so a rejected
+    // submission that returned nothing would throw away the other fields.
+    const result = await enrollResponder({}, formData({ learnerName: 'Alex Medic', badgeId: 'B-1234' }));
+    expect(result.values).toEqual({ learnerName: 'Alex Medic', badgeId: 'B-1234', certification: '' });
+  });
+
+  it('gives back what the user typed when the session expired', async () => {
+    getSessionMock.mockResolvedValue(null);
+    const result = await enrollResponder(
+      {},
+      formData({ learnerName: 'Alex Medic', badgeId: 'B-1234', certification: 'emt' }),
+    );
+    expect(result.values?.learnerName).toBe('Alex Medic');
+  });
+
+  it('gives back what the user typed when the database fails', async () => {
+    vi.mocked(enrollLearner).mockRejectedValue(new Error('super secret detail'));
+    const result = await enrollResponder(
+      {},
+      formData({ learnerName: 'Alex Medic', badgeId: 'B-1234', certification: 'emt' }),
+    );
+    expect(result.values?.badgeId).toBe('B-1234');
+  });
+
   it('rejects a patch that is not EMT or Paramedic', async () => {
     const result = await enrollResponder(
       {},
@@ -80,6 +105,8 @@ describe('enrollResponder action', () => {
       expect.objectContaining({ badgeId: 'B-1234', learnerName: 'Alex Medic', certification: 'emt' }),
     );
     expect(result.message).toMatch(/level 1/);
+    // On success the reset is what we want — the next responder starts clean.
+    expect(result.values).toBeUndefined();
   });
 
   it('keeps the real database error server-side', async () => {

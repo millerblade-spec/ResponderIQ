@@ -43,6 +43,17 @@ export function requiresFocusedDebrief(name: BandName): boolean {
   return name === 'yellow' || name === 'red';
 }
 
+/**
+ * How a mastery streak reads. A streak longer than the requirement is real and
+ * worth showing — it says the learner has been holding mastery, not just
+ * touched it — but "10 of 5" reads like a broken progress bar, so the
+ * requirement is stated as met and the true count follows it.
+ */
+export function streakLabel(streak: number, required: number = REQUIRED_CONSECUTIVE_BLUE): string {
+  if (streak <= required) return `${streak} of ${required}`;
+  return `${required} of ${required} · ${streak} consecutive`;
+}
+
 export interface GradingWeight {
   readonly key: string;
   readonly label: string;

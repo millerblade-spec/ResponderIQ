@@ -20,19 +20,41 @@ export function EnrollForm() {
         <label className={styles.label} htmlFor="learner-name">
           Responder name
         </label>
-        <input className={styles.input} id="learner-name" name="learnerName" type="text" autoComplete="off" />
+        <input
+          className={styles.input}
+          id="learner-name"
+          name="learnerName"
+          type="text"
+          autoComplete="off"
+          required
+          defaultValue={state.values?.learnerName ?? ''}
+        />
       </div>
       <div className={styles.field}>
         <label className={styles.label} htmlFor="badge-id">
           Badge / employee ID
         </label>
-        <input className={styles.input} id="badge-id" name="badgeId" type="text" autoComplete="off" />
+        <input
+          className={styles.input}
+          id="badge-id"
+          name="badgeId"
+          type="text"
+          autoComplete="off"
+          required
+          defaultValue={state.values?.badgeId ?? ''}
+        />
       </div>
       <div className={styles.field}>
         <label className={styles.label} htmlFor="certification">
           What patch are we training?
         </label>
-        <select className={styles.select} id="certification" name="certification" defaultValue="">
+        <select
+          className={styles.select}
+          id="certification"
+          name="certification"
+          required
+          defaultValue={state.values?.certification ?? ''}
+        >
           <option value="" disabled>
             Choose a patch
           </option>

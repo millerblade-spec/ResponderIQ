@@ -1,5 +1,5 @@
 import { levelDefinition } from '@/lib/rpos/levels';
-import { gradingWeightsFor, RPOS_BANDS } from '@/lib/rpos/grading';
+import { gradingWeightsFor, streakLabel, RPOS_BANDS } from '@/lib/rpos/grading';
 import { missCategoryLabel } from '@/lib/rpos/missBoard';
 import type { BandName, LevelStanding } from '@/lib/rpos/types';
 import styles from './Rpos.module.css';
@@ -124,7 +124,7 @@ export function LevelStandingView({ standing }: LevelStandingViewProps) {
           />
         ))}
         <span className={styles.rowMeta}>
-          {standing.consecutiveBlue} of {standing.requiredConsecutiveBlue}
+          {streakLabel(standing.consecutiveBlue, standing.requiredConsecutiveBlue)}
         </span>
       </div>
 

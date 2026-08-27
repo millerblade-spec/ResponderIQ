@@ -6,6 +6,7 @@ import {
   gradingWeightsFor,
   isMasteryBand,
   requiresFocusedDebrief,
+  streakLabel,
 } from './grading';
 import { DEFAULT_SIMULATOR_CONFIG } from '@/lib/engine/config';
 
@@ -67,5 +68,22 @@ describe('RPOS grading bands', () => {
     for (const level of [2, 3, 4, 5, 6] as const) {
       expect(gradingWeightsFor(level)).toBeNull();
     }
+  });
+});
+
+describe('mastery streak label', () => {
+  it('reads as progress toward the requirement', () => {
+    expect(streakLabel(0, 5)).toBe('0 of 5');
+    expect(streakLabel(3, 5)).toBe('3 of 5');
+    expect(streakLabel(5, 5)).toBe('5 of 5');
+  });
+
+  it('does not read as "10 of 5" once the streak runs past the requirement', () => {
+    // The longer streak is real and worth showing; it just is not progress.
+    expect(streakLabel(10, 5)).toBe('5 of 5 · 10 consecutive');
+  });
+
+  it('defaults to the program’s own requirement', () => {
+    expect(streakLabel(2)).toBe(`2 of ${REQUIRED_CONSECUTIVE_BLUE}`);
   });
 });

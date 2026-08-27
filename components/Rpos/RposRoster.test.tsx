@@ -51,7 +51,7 @@ describe('RPOS views (integration, real database)', () => {
     // 'EMT' also appears in the enroll form's patch selector, so scope to the row.
     expect(screen.getByRole('link', { name: /Dana Rivera/ })).toHaveTextContent('EMT');
     expect(screen.getByText(/Level 1 — Orientation & Evaluation/)).toBeInTheDocument();
-    expect(screen.getByText(/BLUE 0\/5/)).toBeInTheDocument();
+    expect(screen.getByText(/BLUE 0 of 5/)).toBeInTheDocument();
   });
 
   it('builds the streak on the roster as clean cases accumulate', async () => {
@@ -59,7 +59,7 @@ describe('RPOS views (integration, real database)', () => {
     await recordRun();
     await recordRun();
     render(await RposRoster());
-    expect(screen.getByText(/BLUE 2\/5/)).toBeInTheDocument();
+    expect(screen.getByText(/BLUE 2 of 5/)).toBeInTheDocument();
     expect(screen.getByText(/2 case\(s\)/)).toBeInTheDocument();
   });
 

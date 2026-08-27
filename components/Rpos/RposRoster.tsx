@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { loadRoster } from '@/lib/rpos/load';
+import { streakLabel } from '@/lib/rpos/grading';
 import { EnrollForm } from './EnrollForm';
 import styles from './Rpos.module.css';
 
@@ -52,7 +53,7 @@ export async function RposRoster() {
               <span className={styles.rowMeta}>
                 Level {standing.level} — {standing.levelTitle}
                 <br />
-                BLUE {standing.consecutiveBlue}/{standing.requiredConsecutiveBlue} · {caseCount} case(s)
+                BLUE {streakLabel(standing.consecutiveBlue, standing.requiredConsecutiveBlue)} · {caseCount} case(s)
                 {standing.openMisses.length > 0 ? ` · ${standing.openMisses.length} open miss(es)` : ''}
                 {lastCaseAt ? ` · last ${new Date(lastCaseAt).toLocaleDateString()}` : ''}
               </span>

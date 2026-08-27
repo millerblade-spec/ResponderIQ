@@ -13,6 +13,20 @@ import type { Certification, LevelNumber, PersonalityMode } from './types';
 export interface RposFormState {
   readonly message?: string;
   readonly error?: string;
+  /**
+   * What the user typed, echoed back on failure only.
+   *
+   * React resets an uncontrolled form once a Server Action completes, so
+   * without this a rejected submission wipes the name and badge the training
+   * officer just typed and they start over. Returned on error so the form can
+   * repopulate itself, and deliberately NOT on success, where the reset is
+   * what we want — the next responder starts from an empty form.
+   */
+  readonly values?: {
+    readonly learnerName: string;
+    readonly badgeId: string;
+    readonly certification: string;
+  };
 }
 
 const SESSION_EXPIRED = 'Your session has expired. Sign in again.';
@@ -29,15 +43,17 @@ export async function enrollResponder(
   _previousState: RposFormState,
   formData: FormData,
 ): Promise<RposFormState> {
-  if (!(await getSession())) return { error: SESSION_EXPIRED };
+  const submitted = {
+    learnerName: String(formData.get('learnerName') ?? ''),
+    badgeId: String(formData.get('badgeId') ?? ''),
+    certification: String(formData.get('certification') ?? ''),
+  };
 
-  const parsed = enrollmentInputSchema.safeParse({
-    learnerName: formData.get('learnerName'),
-    badgeId: formData.get('badgeId'),
-    certification: formData.get('certification'),
-  });
+  if (!(await getSession())) return { error: SESSION_EXPIRED, values: submitted };
+
+  const parsed = enrollmentInputSchema.safeParse(submitted);
   if (!parsed.success) {
-    return { error: 'Enter the responder’s name, badge / employee ID, and patch.' };
+    return { error: 'Enter the responder’s name, badge / employee ID, and patch.', values: submitted };
   }
 
   try {
@@ -57,7 +73,7 @@ export async function enrollResponder(
       : { message: `${outcome.enrollment.learnerName} (${parsed.data.badgeId}) is already on the program.` };
   } catch (error) {
     console.error('Failed to enroll responder:', error);
-    return { error: 'Something went wrong enrolling that responder. Please try again.' };
+    return { error: 'Something went wrong enrolling that responder. Please try again.', values: submitted };
   }
 }
 
