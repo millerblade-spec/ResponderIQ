@@ -1,123 +1,151 @@
 import { describe, it, expect } from 'vitest';
-import { evaluateProgram } from './progression';
-import { RPOS_PROGRAM } from './program';
-import { makeEvidence, makePoorRun, makeStoredRun } from './rpos.fixture';
-import type { ProgramState } from './types';
+import { consecutiveMastery, countsAsMastery, evaluateStanding } from './progression';
+import { at, blueRun, failedHardStop, makeCase, makeEvidence, makeMiss } from './rpos.fixture';
 
-function stage(state: ProgramState, id: string) {
-  const found = state.stages.find((s) => s.id === id);
-  if (!found) throw new Error(`no such stage: ${id}`);
-  return found;
-}
+describe('RPOS advancement', () => {
+  // Level 3 isolates the streak rule: Level 1 additionally requires about ten
+  // scenarios, which is exercised on its own further down.
+  it('needs five consecutive BLUE cases', () => {
+    const four = evaluateStanding(makeEvidence({ level: 3, cases: blueRun(4, { level: 3 }) }));
+    expect(four.consecutiveBlue).toBe(4);
+    expect(four.eligibleToAdvance).toBe(false);
+    expect(four.blockers.map((b) => b.kind)).toContain('consecutive_blue');
 
-describe('RPOS progression', () => {
-  it('starts a responder with nothing recorded at not_started, first stage available', () => {
-    const state = evaluateProgram(makeEvidence({ hasCompletedTruckCheck: false, truckCheckAttempts: 0 }));
-    expect(state.status).toBe('not_started');
-    expect(stage(state, 'shift_readiness').status).toBe('available');
-    expect(state.nextAction).toMatch(/Shift Readiness/);
-    expect(state.stagesComplete).toBe(0);
-    expect(state.stageCount).toBe(RPOS_PROGRAM.stages.length);
+    const five = evaluateStanding(makeEvidence({ level: 3, cases: blueRun(5, { level: 3 }) }));
+    expect(five.consecutiveBlue).toBe(5);
+    expect(five.eligibleToAdvance).toBe(true);
+    expect(five.nextLevel).toBe(4);
   });
 
-  it('locks later stages behind an unmet gate, but still reports what is met inside them', () => {
-    // Runs recorded, but no Truck Check: stage one is the gate.
-    const state = evaluateProgram(
-      makeEvidence({ hasCompletedTruckCheck: false, truckCheckAttempts: 0, runs: [makeStoredRun()] }),
-    );
-    expect(stage(state, 'shift_readiness').status).toBe('available');
-    expect(stage(state, 'first_response').status).toBe('locked');
-    // The evidence is not hidden just because the stage is locked.
-    expect(stage(state, 'first_response').requirements[0].met).toBe(true);
-    expect(state.status).toBe('in_progress');
+  it('counts the streak from the most recent case, so a later miss resets it', () => {
+    const cases = [
+      ...blueRun(4),
+      makeCase({ score: 94, band: 'yellow', createdAt: at(5) }),
+    ];
+    expect(consecutiveMastery(cases)).toBe(0);
   });
 
-  it('opens the next stage once the previous one is complete', () => {
-    const state = evaluateProgram(makeEvidence({ runs: [] }));
-    expect(stage(state, 'shift_readiness').status).toBe('complete');
-    expect(stage(state, 'first_response').status).toBe('available');
-    expect(state.nextAction).toMatch(/First Response/);
+  it('does not let a BLUE case with a critical error extend the streak', () => {
+    const withCritical = makeCase({
+      score: 99,
+      band: 'blue',
+      criticalErrors: ['Entered a scene under a staging order before it was cleared.'],
+      createdAt: at(5),
+    });
+    expect(countsAsMastery(withCritical)).toBe(false);
+
+    const standing = evaluateStanding(makeEvidence({ cases: [...blueRun(4), withCritical] }));
+    expect(standing.consecutiveBlue).toBe(0);
+    expect(standing.eligibleToAdvance).toBe(false);
+    expect(standing.blockers.map((b) => b.kind)).toContain('critical_error');
   });
 
-  it('marks a stage in_progress when only some of its requirements are met', () => {
-    // Clean run: no critical concern (first requirement met), but the poor
-    // scene competencies below keep the stage's second requirement unmet.
-    const state = evaluateProgram(
+  it('does not let a BLUE case with a failed hard stop extend the streak', () => {
+    const withHardStopMiss = makeCase({
+      score: 100,
+      band: 'blue',
+      hardStops: [failedHardStop('dsi', ['Full 90-second paralysis countdown'])],
+      createdAt: at(5),
+    });
+    expect(countsAsMastery(withHardStopMiss)).toBe(false);
+
+    const standing = evaluateStanding(makeEvidence({ cases: [...blueRun(4), withHardStopMiss] }));
+    expect(standing.eligibleToAdvance).toBe(false);
+    expect(standing.blockers.map((b) => b.kind)).toContain('hard_stop');
+    expect(standing.hardStopFailures.map((failure) => failure.id)).toEqual(['dsi']);
+    // A perfect score does not erase it.
+    expect(standing.bandCounts.blue).toBe(5);
+  });
+
+  it('blocks advancement on an unresolved critical Miss Board item even with five clean BLUE cases', () => {
+    const standing = evaluateStanding(
       makeEvidence({
-        runs: [
-          makeStoredRun(),
-          makeStoredRun({
-            sceneSafety: {
-              windshieldReviewed: false,
-              dispatchStaging: false,
-              staged: false,
-              clearedToEnter: true,
-              sceneLightChoice: null,
-              ballisticChoice: null,
-            },
-            clinical: {
-              actionsPerformed: [],
-              findingsObtained: [],
-              reassessments: 0,
-              deteriorationOccurred: false,
-              deteriorationRecognized: false,
-            },
+        level: 3,
+        cases: blueRun(5, { level: 3 }),
+        missBoard: [makeMiss({ subject: 'Scene safety', critical: true })],
+      }),
+    );
+    expect(standing.consecutiveBlue).toBe(5);
+    expect(standing.eligibleToAdvance).toBe(false);
+    expect(standing.blockers.map((b) => b.kind)).toContain('unresolved_critical_miss');
+  });
+
+  it('does not block on a non-critical open miss', () => {
+    const standing = evaluateStanding(
+      makeEvidence({ level: 3, cases: blueRun(5, { level: 3 }), missBoard: [makeMiss({ subject: 'Time management' })] }),
+    );
+    expect(standing.eligibleToAdvance).toBe(true);
+    expect(standing.openMisses).toHaveLength(1);
+  });
+
+  it('holds a Level 1 learner to the level’s stated ten scenarios', () => {
+    const standing = evaluateStanding(makeEvidence({ level: 1, cases: blueRun(5) }));
+    const requirement = standing.levelRequirements.find((r) => r.id === 'meaningful_scenarios');
+    expect(requirement?.met).toBe(false);
+    expect(requirement?.detail).toContain('5 of 10');
+    expect(standing.eligibleToAdvance).toBe(false);
+
+    const ready = evaluateStanding(makeEvidence({ level: 1, cases: blueRun(10) }));
+    expect(ready.eligibleToAdvance).toBe(true);
+  });
+
+  it('sets no scenario minimum at levels the program does not state one for', () => {
+    const standing = evaluateStanding(makeEvidence({ level: 3, cases: blueRun(5, { level: 3 }) }));
+    const requirement = standing.levelRequirements.find((r) => r.id === 'meaningful_scenarios');
+    expect(requirement?.met).toBe(true);
+    expect(requirement?.detail).toMatch(/no minimum count/);
+    expect(standing.eligibleToAdvance).toBe(true);
+  });
+
+  it('counts only cases at the learner’s current level toward the streak', () => {
+    const standing = evaluateStanding(
+      makeEvidence({ level: 2, cases: [...blueRun(5, { level: 1 }), makeCase({ level: 2, createdAt: at(6) })] }),
+    );
+    expect(standing.casesAtLevel).toBe(1);
+    expect(standing.consecutiveBlue).toBe(1);
+  });
+
+  it('counts a challenge-mode case on the same terms as any other', () => {
+    const cases = [...blueRun(4), makeCase({ challengeMode: true, createdAt: at(5) })];
+    const standing = evaluateStanding(makeEvidence({ level: 3, cases: cases.map((c) => ({ ...c, level: 3 })) }));
+    expect(standing.consecutiveBlue).toBe(5);
+    expect(standing.eligibleToAdvance).toBe(true);
+  });
+
+  it('has no next level at the top of the program', () => {
+    const standing = evaluateStanding(makeEvidence({ level: 6, cases: blueRun(5, { level: 6 }) }));
+    expect(standing.eligibleToAdvance).toBe(true);
+    expect(standing.nextLevel).toBeNull();
+  });
+
+  it('names the most serious blocker as the next action, hard stops first', () => {
+    const standing = evaluateStanding(
+      makeEvidence({
+        level: 3,
+        cases: [
+          ...blueRun(4, { level: 3 }),
+          makeCase({
+            level: 3,
+            band: 'blue',
+            criticalErrors: ['Patient deteriorated and was never reassessed.'],
+            hardStops: [failedHardStop('max_bvm', ['Two NPAs'])],
+            createdAt: at(5),
           }),
         ],
+        missBoard: [makeMiss({ critical: true })],
       }),
     );
-    const discipline = stage(state, 'scene_discipline');
-    expect(discipline.status).toBe('in_progress');
-    expect(discipline.requirements.find((r) => r.id === 'latest_run_no_concerns')?.met).toBe(true);
-    expect(discipline.requirements.find((r) => r.id === 'scene_competencies_proficient')?.met).toBe(false);
+    expect(standing.nextAction).toMatch(/Max BVM/);
   });
 
-  it('surfaces a critical safety concern from the most recent run and blocks scene discipline', () => {
-    const state = evaluateProgram(makeEvidence({ runs: [makeStoredRun(makePoorRun())] }));
-    expect(state.openConcerns.length).toBeGreaterThan(0);
-    expect(stage(state, 'scene_discipline').requirements.find((r) => r.id === 'latest_run_no_concerns')?.met).toBe(
-      false,
+  it('carries the level identity, patch, and Ron mode through unchanged', () => {
+    const standing = evaluateStanding(
+      makeEvidence({ name: 'Dana Rivera', badgeId: 'B-9', certification: 'emt', level: 3, personalityMode: 2 }),
     );
-    expect(state.status).toBe('in_progress');
-  });
-
-  it('does not average a critical concern away behind good runs', () => {
-    const state = evaluateProgram(
-      makeEvidence({
-        runs: [
-          makeStoredRun({}, { createdAt: '2026-01-01T00:00:00.000Z' }),
-          makeStoredRun({}, { createdAt: '2026-02-01T00:00:00.000Z' }),
-          makeStoredRun(makePoorRun(), { createdAt: '2026-03-01T00:00:00.000Z' }),
-        ],
-      }),
-    );
-    expect(state.openConcerns.length).toBeGreaterThan(0);
-    expect(state.status).not.toBe('field_ready');
-  });
-
-  it('reaches field_ready only on repeated clean passing runs with every competency proficient', () => {
-    const one = evaluateProgram(makeEvidence({ runs: [makeStoredRun()] }));
-    expect(one.status).toBe('in_progress');
-    expect(stage(one, 'field_ready').requirements.find((r) => r.id === 'clean_passing_runs')?.met).toBe(false);
-
-    const two = evaluateProgram(makeEvidence({ runs: [makeStoredRun(), makeStoredRun()] }));
-    expect(two.status).toBe('field_ready');
-    expect(two.stagesComplete).toBe(two.stageCount);
-    expect(two.nextAction).toMatch(/Program complete/);
-  });
-
-  it('names the earliest unmet requirement as the next action', () => {
-    const state = evaluateProgram(
-      makeEvidence({ hasCompletedTruckCheck: false, truckCheckAttempts: 0, runs: [makeStoredRun(), makeStoredRun()] }),
-    );
-    expect(state.nextAction).toMatch(/Shift Readiness: complete a full truck check/i);
-  });
-
-  it('carries the learner identity and program identity through unchanged', () => {
-    const state = evaluateProgram(makeEvidence({ name: 'Dana Rivera', badgeId: 'B-9' }));
-    expect(state.learner).toEqual({ name: 'Dana Rivera', badgeId: 'B-9' });
-    expect(state.programId).toBe(RPOS_PROGRAM.id);
-    expect(state.programVersion).toBe(RPOS_PROGRAM.version);
-    expect(state.programTitle).toBe(RPOS_PROGRAM.title);
+    expect(standing.learner).toEqual({ name: 'Dana Rivera', badgeId: 'B-9' });
+    expect(standing.certification).toBe('emt');
+    expect(standing.levelTitle).toBe('Protocol Mastery + ALS Integration');
+    expect(standing.personalityMode).toBe(2);
+    expect(standing.coaching).toBe('learner_owns_assessment');
   });
 });

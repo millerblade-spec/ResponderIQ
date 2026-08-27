@@ -1,83 +1,132 @@
 import 'server-only';
-import { listAllLearnerRuns, listRunsForBadges, type StoredOperationalRun } from '@/lib/db/operationalRuns';
-import { getTruckCheckStatus, getTruckCheckStatusForLearners } from '@/lib/db/truckCheckAttempts';
-import { getEnrollment, listEnrollments, type ProgramEnrollment } from '@/lib/db/programEnrollments';
-import { buildLearnerEvidence } from './evidence';
-import { evaluateProgram } from './progression';
-import { RPOS_PROGRAM } from './program';
-import type { ProgramState } from './types';
+import { listAllLearnerRuns, listRunsForBadges } from '@/lib/db/operationalRuns';
+import { getEnrollment, listEnrollments, type RposEnrollment } from '@/lib/db/rposEnrollments';
+import { listMissBoard, listMissBoardsForBadges, recordMisses, resolveMisses } from '@/lib/db/rposMissBoard';
+import { buildLearnerEvidence, runToCase, subjectsExercisedBy } from './evidence';
+import { evaluateStanding } from './progression';
+import { resolutionsFromCase } from './missBoard';
+import type { LevelStanding } from './types';
 
 /**
- * The read path from the database to a program state. Everything below is
- * fetch-then-delegate: the reasoning lives in the pure modules beside this
- * file, so it stays testable without a database.
+ * The read path from the database to a level standing. Fetch-then-delegate:
+ * the reasoning lives in the pure modules beside this file, so it stays
+ * testable without a database.
  *
- * Identity note: a responder is one badge id. operational_runs.badge_id and
- * truck_check_attempts.learner_id are the same identifier from two different
- * slices — that equivalence is asserted once, here, rather than assumed in
- * five places.
+ * Identity note: a responder is one badge id. operational_runs.badge_id,
+ * truck_check_attempts.learner_id, and rpos_enrollments.badge_id are the same
+ * identifier from three slices — asserted once, here.
  */
 
 const ROSTER_LIMIT = 50;
 
-/** The display name for a responder: the roster name if enrolled, otherwise the one they last signed a run with. */
-function resolveName(enrollment: ProgramEnrollment | null, runs: readonly StoredOperationalRun[], badgeId: string): string {
-  if (enrollment) return enrollment.learnerName;
-  const latest = runs[runs.length - 1];
-  return latest?.run.learner.name ?? badgeId;
+/**
+ * Brings a learner's Miss Board up to date with their recorded cases: records
+ * misses from cases that have not been processed, then clears entries a later
+ * case retested cleanly.
+ *
+ * Both steps are idempotent (insert-on-conflict-do-nothing, and resolve only
+ * what is still open), so running this on every read is safe and keeps the
+ * board correct without a background job. Cases are walked oldest first
+ * because a case can only resolve entries that already existed when it ran.
+ */
+export async function syncMissBoard(badgeId: string): Promise<void> {
+  const [runs, board] = await Promise.all([listAllLearnerRuns(badgeId), listMissBoard(badgeId)]);
+  if (runs.length === 0) return;
+
+  const enrollment = await getEnrollment(badgeId);
+  const certification = enrollment?.certification ?? 'paramedic';
+  const level = enrollment?.level ?? 1;
+
+  let current = board;
+  for (const run of runs) {
+    const caseRecord = runToCase(run, { certification, level });
+    const resolutions = resolutionsFromCase(current, caseRecord, subjectsExercisedBy(run));
+    if (resolutions.length > 0) {
+      await resolveMisses(resolutions.map((r) => ({ entryId: r.entryId, resolvedByCaseId: r.resolvedByCaseId })));
+    }
+    await recordMisses(
+      caseRecord.misses.map((miss) => ({
+        id: miss.id,
+        badgeId,
+        category: miss.category,
+        subject: miss.subject,
+        detail: miss.detail,
+        critical: miss.critical,
+        sourceCaseId: miss.sourceCaseId,
+        createdAt: miss.createdAt,
+      })),
+    );
+    current = await listMissBoard(badgeId);
+  }
 }
 
 /**
- * One responder's program state. Returns null only when there is nothing to
- * show — not enrolled and no recorded runs — so an unknown badge id reads as
- * "no such responder" rather than an empty program.
+ * One responder's standing. Returns null when there is nothing to show — not
+ * enrolled and no recorded runs — so an unknown badge reads as "no such
+ * responder" rather than an empty level 1.
  */
-export async function loadLearnerProgram(badgeId: string): Promise<ProgramState | null> {
-  const [enrollment, runs, truckCheck] = await Promise.all([
-    getEnrollment(RPOS_PROGRAM.id, badgeId),
-    listAllLearnerRuns(badgeId),
-    getTruckCheckStatus(badgeId),
-  ]);
+export async function loadLearnerStanding(badgeId: string): Promise<LevelStanding | null> {
+  const [enrollment, runs] = await Promise.all([getEnrollment(badgeId), listAllLearnerRuns(badgeId)]);
   if (!enrollment && runs.length === 0) return null;
 
-  return evaluateProgram(
-    buildLearnerEvidence({ learner: { name: resolveName(enrollment, runs, badgeId), badgeId }, truckCheck, runs }),
+  await syncMissBoard(badgeId);
+  const missBoard = await listMissBoard(badgeId);
+
+  return evaluateStanding(
+    buildLearnerEvidence({
+      learner: { name: enrollment?.learnerName ?? runs[runs.length - 1]?.run.learner.name ?? badgeId, badgeId },
+      certification: enrollment?.certification ?? 'paramedic',
+      level: enrollment?.level ?? 1,
+      personalityMode: enrollment?.personalityMode ?? 1,
+      runs,
+      missBoard,
+    }),
   );
 }
 
 export interface RosterEntry {
-  readonly enrollment: ProgramEnrollment;
-  readonly state: ProgramState;
-  readonly runCount: number;
-  readonly lastRunAt: string | null;
+  readonly enrollment: RposEnrollment;
+  readonly standing: LevelStanding;
+  readonly caseCount: number;
+  readonly lastCaseAt: string | null;
 }
 
 /**
- * The full roster, evaluated. Three queries regardless of roster size (the
- * enrollments, then every run and Truck Check status for those badges in one
- * batch each) — the alternative, evaluating learner by learner, would put the
- * query count on the roster's size.
+ * The full roster, evaluated. Two batched queries for the evidence regardless
+ * of roster size — evaluating learner by learner would put the query count on
+ * the roster's length.
+ *
+ * The roster does NOT sync Miss Boards: syncing writes, and a list view should
+ * not write once per row. It reports the boards as they stand; opening a
+ * responder syncs theirs.
  */
-export async function loadProgramRoster(limit: number = ROSTER_LIMIT): Promise<readonly RosterEntry[]> {
-  const enrollments = await listEnrollments(RPOS_PROGRAM.id, limit);
+export async function loadRoster(limit: number = ROSTER_LIMIT): Promise<readonly RosterEntry[]> {
+  const enrollments = await listEnrollments(limit);
   if (enrollments.length === 0) return [];
 
   const badgeIds = enrollments.map((enrollment) => enrollment.badgeId);
-  const [runsByBadge, truckChecks] = await Promise.all([
+  const [runsByBadge, boardsByBadge] = await Promise.all([
     listRunsForBadges(badgeIds),
-    getTruckCheckStatusForLearners(badgeIds),
+    listMissBoardsForBadges(badgeIds),
   ]);
 
   return enrollments.map((enrollment) => {
     const runs = runsByBadge.get(enrollment.badgeId) ?? [];
-    const truckCheck = truckChecks.get(enrollment.badgeId) ?? { hasCompletedTruckCheck: false, attemptCount: 0 };
-    const state = evaluateProgram(
+    const standing = evaluateStanding(
       buildLearnerEvidence({
         learner: { name: enrollment.learnerName, badgeId: enrollment.badgeId },
-        truckCheck,
+        certification: enrollment.certification,
+        level: enrollment.level,
+        personalityMode: enrollment.personalityMode,
         runs,
+        missBoard: boardsByBadge.get(enrollment.badgeId) ?? [],
       }),
     );
-    return { enrollment, state, runCount: runs.length, lastRunAt: runs[runs.length - 1]?.createdAt ?? null };
+    return {
+      enrollment,
+      standing,
+      caseCount: runs.length,
+      lastCaseAt: runs[runs.length - 1]?.createdAt ?? null,
+    };
   });
 }

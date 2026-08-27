@@ -1,98 +1,188 @@
 /**
- * Evaluates a learner's evidence against the program: stage statuses, the
- * competency rollup, and the one next action a training officer should give.
+ * Advancement.
  *
- * Requirements are always evaluated, even for a locked stage. A learner can
- * satisfy a later stage's requirements before an earlier gate opens (running
- * calls without ever completing a Truck Check, say), and hiding that would
- * make the program look like it lost the evidence. The gate still holds — the
- * stage reads locked — but what is and isn't met stays visible.
+ * Prompt #1 states the rule in one place, and this module implements exactly
+ * that and nothing more:
+ *
+ *   5 consecutive BLUE cases
+ *   + no critical errors
+ *   + no unresolved critical Miss Board items
+ *   + level requirements complete
+ *
+ * Two clarifications the prompts force, which this module makes explicit:
+ * - "Critical errors may block mastery regardless of numeric score." So a
+ *   98-scoring case that carried a critical error or a failed hard stop does
+ *   not extend a BLUE streak — it breaks it. Otherwise the sentence would mean
+ *   nothing.
+ * - A challenge-mode case (the learner voluntarily took a harder scenario) is
+ *   graded at their CURRENT level and is never penalized, so it counts toward
+ *   the streak on exactly the same terms as any other case.
  */
-import { rollupCompetencies } from './competency';
-import { RPOS_PROGRAM } from './program';
+import { REQUIRED_CONSECUTIVE_BLUE, isMasteryBand } from './grading';
+import { levelDefinition, levelTitleFor, nextLevelAfter } from './levels';
+import { failedHardStops } from './hardStops';
+import { openCriticalMisses, openMisses } from './missBoard';
 import type {
+  AdvancementBlocker,
+  BandName,
+  CaseRecord,
   LearnerEvidence,
-  Program,
-  ProgramState,
-  ProgramStatus,
-  RequirementResult,
-  StageState,
-  StageStatus,
+  LevelRequirement,
+  LevelStanding,
 } from './types';
 
-/**
- * The gate wins. A stage whose requirements are already satisfied still reads
- * locked while an earlier stage is open — otherwise a responder who never
- * completed a Truck Check could show four complete stages, and the ordering
- * the program exists to enforce would be decoration. What is met inside the
- * locked stage stays visible; it just doesn't count yet.
- */
-function statusFor(allMet: boolean, anyMet: boolean, previousComplete: boolean): StageStatus {
-  if (!previousComplete) return 'locked';
-  if (allMet) return 'complete';
-  return anyMet ? 'in_progress' : 'available';
+/** A case counts as mastery only if it is BLUE AND carried no critical error and no hard-stop failure. */
+export function countsAsMastery(caseRecord: CaseRecord): boolean {
+  return (
+    isMasteryBand(caseRecord.band) &&
+    caseRecord.criticalErrors.length === 0 &&
+    failedHardStops(caseRecord.hardStops).length === 0
+  );
 }
 
-function overallStatus(stages: readonly StageState[]): ProgramStatus {
-  if (stages.every((stage) => stage.status === 'complete')) return 'field_ready';
-  const anyProgress = stages.some((stage) => stage.requirements.some((requirement) => requirement.met));
-  return anyProgress ? 'in_progress' : 'not_started';
-}
-
-/**
- * The next action: the first unmet requirement of the earliest stage that is
- * not complete. Locked stages are included in that walk — the earliest
- * incomplete stage is by definition the one whose gate is open or is the gate
- * itself, so this always names the thing standing between the responder and
- * the next stage rather than something further down the path.
- */
-function nextActionFor(stages: readonly StageState[]): string {
-  for (const stage of stages) {
-    if (stage.status === 'complete') continue;
-    const unmet = stage.requirements.find((requirement) => !requirement.met);
-    if (unmet) return `${stage.title}: ${unmet.label.toLowerCase()}.`;
+/** Consecutive mastery cases ending at the most recent one. Any non-mastery case resets it to zero. */
+export function consecutiveMastery(casesOldestFirst: readonly CaseRecord[]): number {
+  let streak = 0;
+  for (let index = casesOldestFirst.length - 1; index >= 0; index -= 1) {
+    if (!countsAsMastery(casesOldestFirst[index])) break;
+    streak += 1;
   }
-  return 'Program complete — every stage is satisfied on current evidence.';
+  return streak;
 }
 
-/** Evaluates one learner's evidence against a program (RPOS by default). */
-export function evaluateProgram(evidence: LearnerEvidence, program: Program = RPOS_PROGRAM): ProgramState {
-  const competencies = rollupCompetencies(evidence.runs);
-  const context = { evidence, competencies };
+function bandCounts(cases: readonly CaseRecord[]): Readonly<Record<BandName, number>> {
+  const counts: Record<BandName, number> = { blue: 0, green: 0, yellow: 0, red: 0 };
+  for (const caseRecord of cases) counts[caseRecord.band] += 1;
+  return counts;
+}
 
-  const stages: StageState[] = [];
-  let previousComplete = true; // the first stage is never locked
-  for (const stage of program.stages) {
-    const requirements: RequirementResult[] = stage.requirements.map((requirement) => {
-      const outcome = requirement.evaluate(context);
-      return { id: requirement.id, label: requirement.label, met: outcome.met, detail: outcome.detail };
+/**
+ * The level's own requirements. Only Level 1 states a scenario count, so only
+ * Level 1 gets a count requirement — the others report honestly that the
+ * prompts set no minimum rather than inventing one.
+ */
+function levelRequirementsFor(evidence: LearnerEvidence, casesAtLevel: readonly CaseRecord[]): readonly LevelRequirement[] {
+  const definition = levelDefinition(evidence.level);
+  const requirements: LevelRequirement[] = [];
+
+  if (definition.minimumScenarios != null) {
+    const met = casesAtLevel.length >= definition.minimumScenarios;
+    requirements.push({
+      id: 'meaningful_scenarios',
+      label: `Complete about ${definition.minimumScenarios} meaningful scenarios at this level`,
+      met,
+      detail: `${casesAtLevel.length} of ${definition.minimumScenarios} recorded at level ${evidence.level}.`,
     });
-    const allMet = requirements.every((requirement) => requirement.met);
-    const anyMet = requirements.some((requirement) => requirement.met);
-    stages.push({
-      id: stage.id,
-      title: stage.title,
-      purpose: stage.purpose,
-      status: statusFor(allMet, anyMet, previousComplete),
-      requirements,
+  } else {
+    requirements.push({
+      id: 'meaningful_scenarios',
+      label: 'Work the level until the mastery streak holds',
+      met: true,
+      detail: `${casesAtLevel.length} case(s) recorded at level ${evidence.level}; the program sets no minimum count for this level.`,
     });
-    // Only a stage that actually reads complete opens the next one — a locked
-    // stage with every requirement met does not chain past its own gate.
-    previousComplete = previousComplete && allMet;
   }
 
-  const latest = evidence.runs[evidence.runs.length - 1];
+  return requirements;
+}
+
+function blockersFor(
+  evidence: LearnerEvidence,
+  casesAtLevel: readonly CaseRecord[],
+  streak: number,
+  requirements: readonly LevelRequirement[],
+): readonly AdvancementBlocker[] {
+  const blockers: AdvancementBlocker[] = [];
+
+  if (streak < REQUIRED_CONSECUTIVE_BLUE) {
+    blockers.push({
+      kind: 'consecutive_blue',
+      summary: `${streak} of ${REQUIRED_CONSECUTIVE_BLUE} consecutive BLUE cases`,
+      detail:
+        streak === 0
+          ? 'The mastery streak is at zero — the most recent case was not a clean BLUE.'
+          : `${REQUIRED_CONSECUTIVE_BLUE - streak} more consecutive BLUE case(s) needed.`,
+    });
+  }
+
+  // Critical errors on the most recent case: an open concern, not history.
+  const latest = casesAtLevel[casesAtLevel.length - 1] ?? evidence.cases[evidence.cases.length - 1];
+  if (latest && latest.criticalErrors.length > 0) {
+    blockers.push({
+      kind: 'critical_error',
+      summary: `${latest.criticalErrors.length} critical error(s) on the most recent case`,
+      detail: latest.criticalErrors.join(' '),
+    });
+  }
+
+  if (latest) {
+    for (const failure of failedHardStops(latest.hardStops)) {
+      blockers.push({
+        kind: 'hard_stop',
+        summary: `${failure.title} was not completed in full`,
+        detail: `Missed: ${failure.missedItems.map((item) => item.label).join('; ')}.`,
+      });
+    }
+  }
+
+  const criticalMisses = openCriticalMisses(evidence.missBoard);
+  if (criticalMisses.length > 0) {
+    blockers.push({
+      kind: 'unresolved_critical_miss',
+      summary: `${criticalMisses.length} unresolved critical Miss Board item(s)`,
+      detail: criticalMisses.map((entry) => entry.subject).join(', '),
+    });
+  }
+
+  for (const requirement of requirements.filter((candidate) => !candidate.met)) {
+    blockers.push({ kind: 'level_requirements', summary: requirement.label, detail: requirement.detail });
+  }
+
+  return blockers;
+}
+
+/** The one next thing this learner needs, taken from the first blocker in the order the prompts state them. */
+function nextActionFor(blockers: readonly AdvancementBlocker[], level: number): string {
+  const priority: AdvancementBlocker['kind'][] = [
+    'hard_stop',
+    'critical_error',
+    'unresolved_critical_miss',
+    'level_requirements',
+    'consecutive_blue',
+  ];
+  for (const kind of priority) {
+    const blocker = blockers.find((candidate) => candidate.kind === kind);
+    if (blocker) return `${blocker.summary}. ${blocker.detail}`;
+  }
+  return `Level ${level} is complete — eligible to advance.`;
+}
+
+/** Evaluates one learner's standing at their current level. */
+export function evaluateStanding(evidence: LearnerEvidence): LevelStanding {
+  const definition = levelDefinition(evidence.level);
+  const casesAtLevel = evidence.cases.filter((caseRecord) => caseRecord.level === evidence.level);
+  const streak = consecutiveMastery(casesAtLevel);
+  const requirements = levelRequirementsFor(evidence, casesAtLevel);
+  const blockers = blockersFor(evidence, casesAtLevel, streak, requirements);
+  const latest = casesAtLevel[casesAtLevel.length - 1];
+
   return {
-    programId: program.id,
-    programVersion: program.version,
-    programTitle: program.title,
     learner: evidence.learner,
-    status: overallStatus(stages),
-    stages,
-    competencies,
-    nextAction: nextActionFor(stages),
-    openConcerns: latest ? [...new Set(latest.criticalConcerns)] : [],
-    stagesComplete: stages.filter((stage) => stage.status === 'complete').length,
-    stageCount: stages.length,
+    certification: evidence.certification,
+    level: evidence.level,
+    levelTitle: levelTitleFor(evidence.level, evidence.certification),
+    levelCallSign: definition.callSign,
+    coaching: definition.coaching,
+    personalityMode: evidence.personalityMode,
+    consecutiveBlue: streak,
+    requiredConsecutiveBlue: REQUIRED_CONSECUTIVE_BLUE,
+    casesAtLevel: casesAtLevel.length,
+    bandCounts: bandCounts(casesAtLevel),
+    levelRequirements: requirements,
+    blockers,
+    eligibleToAdvance: blockers.length === 0,
+    nextLevel: nextLevelAfter(evidence.level),
+    openMisses: openMisses(evidence.missBoard),
+    hardStopFailures: latest ? failedHardStops(latest.hardStops) : [],
+    nextAction: nextActionFor(blockers, evidence.level),
   };
 }

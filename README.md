@@ -27,13 +27,15 @@ needs — a minimal reusable engine rather than a general-purpose EMS model.
 Scenarios live in [`lib/scenarios`](lib/scenarios); UI lives in
 [`app`](app) and [`components`](components).
 
-Above the individual runs sits **RPOS — the Responder Performance Operating
-System** ([`lib/rpos`](lib/rpos)): a six-stage development program that turns a
-responder's recorded Truck Checks and completed runs into stage progress, a
-competency level per behavioral category, and the single next action they
-need. Stages unlock only on recorded evidence, nothing derived is stored, and
-a critical safety concern is never averaged away. See
-[`docs/RPOS-PROGRAM.md`](docs/RPOS-PROGRAM.md).
+Above the individual runs sits **RPOS — the EMS Clinical Simulation Trainer**
+([`lib/rpos`](lib/rpos)): the six-level program a responder works through, from
+Orientation & Evaluation to CCP Rescue Mode, graded against the current Fort
+Worth Regional EMS System protocols. Advancement takes five consecutive BLUE
+cases with no critical errors, no unresolved critical Miss Board items, and the
+level's requirements complete — and MAX BVM and DSI are 100% hard stops at
+every level, where a good outcome never erases a missed mandatory element. The
+program as specified is [`docs/rpos/SPEC.md`](docs/rpos/SPEC.md); how it is
+built here is [`docs/rpos/README.md`](docs/rpos/README.md).
 
 ## Getting started
 
@@ -74,8 +76,8 @@ a critical safety concern is never averaged away. See
    ```
    Open [http://localhost:3000](http://localhost:3000). The admin area is
    gated by the account you just created at `/admin/login`: run review lives
-   under `/admin/runs` and `/admin/scenarios/bls-01`, and the RPOS program
-   roster under `/admin/program`.
+   under `/admin/runs` and `/admin/scenarios/bls-01`, and the RPOS roster
+   under `/admin/rpos`.
 
 7. **Run tests:**
    ```bash
@@ -102,14 +104,14 @@ a critical safety concern is never averaged away. See
 ## Project layout
 
 ```
-app/            Next.js routes (home, dashboard, settings, scenarios, admin, admin program)
-components/     Reusable UI (Button, Card, SimulatorPlayer, AdminReview, AdminReviewList, Program, LoginForm, Dashboard, Settings)
+app/            Next.js routes (home, dashboard, settings, scenarios, admin, admin RPOS)
+components/     Reusable UI (Button, Card, SimulatorPlayer, AdminReview, AdminReviewList, Rpos, LoginForm, Dashboard, Settings)
 lib/engine/     Simulation engine — clock, reducer, scoring, debrief
-lib/rpos/       RPOS program — stages, competency rollup, progression
+lib/rpos/       RPOS — levels, grading bands, Miss Board, hard stops, advancement
 lib/scenarios/  Scenario definitions (BLS-01)
 lib/auth/       Password hashing, signed sessions, the DAL session check
-lib/db/         Postgres connection, schema, admin_users, review_records, runs and program roster data access
+lib/db/         Postgres connection, schema, admin_users, review_records, runs, RPOS roster and Miss Board data access
 lib/review/     Save-request validation (zod) and the save Server Action
 scripts/        One-off CLI scripts (db:migrate, db:seed-admin)
-docs/           Design notes and archived specs
+docs/           Design notes, the RPOS specification, and archived specs
 ```

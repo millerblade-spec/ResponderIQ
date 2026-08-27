@@ -9,7 +9,7 @@ interface AdminHeaderProps {
 /**
  * The bar every administrator page shares. It carries the navigation between
  * the two administrator views that exist — the run list (one call at a time)
- * and the RPOS program (one responder over time) — because they answer
+ * and the RPOS program (one responder across levels) — because they answer
  * different questions about the same data and a training officer moves
  * between them constantly.
  */
@@ -20,8 +20,8 @@ export function AdminHeader({ username }: AdminHeaderProps) {
         <Link href="/admin/runs" className={styles.navLink}>
           Runs
         </Link>
-        <Link href="/admin/program" className={styles.navLink}>
-          Program
+        <Link href="/admin/rpos" className={styles.navLink}>
+          RPOS
         </Link>
       </nav>
       <form action={logout} className={styles.signOutForm}>

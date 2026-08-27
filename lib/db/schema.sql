@@ -86,29 +86,64 @@ CREATE INDEX IF NOT EXISTS operational_runs_learner_idx
 CREATE INDEX IF NOT EXISTS operational_runs_scenario_idx
   ON operational_runs (scenario_id, created_at DESC);
 
--- RPOS program enrollments. The program itself (stages, requirements,
--- competency thresholds) lives in code, not in the database -- it is a
--- specification, versioned with the app, and storing it would let a stored
--- copy drift from the one the scoring actually uses. What IS stored is the
--- roster: which responders an agency has put on the program, so a training
--- officer can enroll someone before their first run and still see them.
+-- RPOS enrollments. RPOS is the six-level EMS Clinical Simulation Trainer
+-- program (see docs/rpos/SPEC.md). The program itself -- the levels, the
+-- grading bands, the advancement rule, the Miss Board categories, and the
+-- MAX BVM / DSI checklists -- lives in code (lib/rpos), not in the database:
+-- it is a specification, versioned with the app, and a stored copy could
+-- drift from the one the grading actually uses.
 --
--- No program standing, stage status, or competency level is stored. All of it
--- is derived at read time from truck_check_attempts and operational_runs
--- (lib/rpos), for the same reason operational scores are never stored: nothing
--- derived can go stale or leak.
+-- What IS stored is the roster: who is on the program, which patch they are
+-- being graded as, and which level they are working. Certification and level
+-- are stored rather than derived because they are decisions a training officer
+-- makes ("What patch are we training today?" / advancing a learner), not facts
+-- computed from case history.
+--
+-- No standing, band, streak, or eligibility is stored. All of it is derived at
+-- read time from operational_runs and rpos_miss_board, for the same reason
+-- operational scores are never stored: nothing derived can go stale or leak.
 --
 -- badge_id is the join key to operational_runs.badge_id and
 -- truck_check_attempts.learner_id -- free text, like every other identity
 -- column here, because there is no learners table to reference.
-CREATE TABLE IF NOT EXISTS program_enrollments (
-  id           BIGSERIAL PRIMARY KEY,
-  program_id   TEXT NOT NULL,
-  learner_name TEXT NOT NULL,
-  badge_id     TEXT NOT NULL,
-  enrolled_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
-  UNIQUE (program_id, badge_id)
+CREATE TABLE IF NOT EXISTS rpos_enrollments (
+  id               BIGSERIAL PRIMARY KEY,
+  badge_id         TEXT NOT NULL UNIQUE,
+  learner_name     TEXT NOT NULL,
+  certification    TEXT NOT NULL,              -- 'emt' | 'paramedic'; scope and grading follow it
+  level            INTEGER NOT NULL DEFAULT 1, -- 1..6
+  personality_mode INTEGER NOT NULL DEFAULT 1, -- 0 clinical | 1 coach | 2 Ron Mode; delivery only
+  enrolled_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at       TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE INDEX IF NOT EXISTS program_enrollments_program_idx
-  ON program_enrollments (program_id, enrolled_at DESC);
+CREATE INDEX IF NOT EXISTS rpos_enrollments_enrolled_at_idx
+  ON rpos_enrollments (enrolled_at DESC);
+
+-- The Miss Board: assessment, protocol, medication/dose, clinical reasoning,
+-- safety, and operations misses, retested later using different presentations.
+--
+-- This is the one derived-looking thing that IS stored, and deliberately: an
+-- entry's whole point is that it outlives the case that created it and stays
+-- open until a LATER case exercises the same subject cleanly. Resolution is
+-- therefore a fact about history (which case cleared it, and when), not
+-- something recomputable from the current state.
+--
+-- `critical` marks the entries that block advancement while unresolved.
+-- `subject` is what a later case must retest -- the subject, not the scenario,
+-- since the retest must be a different presentation.
+CREATE TABLE IF NOT EXISTS rpos_miss_board (
+  id                 TEXT PRIMARY KEY,          -- '<case id>:<subject key>', so re-recording one case is idempotent
+  badge_id           TEXT NOT NULL,
+  category           TEXT NOT NULL,             -- one of the six Miss Board categories
+  subject            TEXT NOT NULL,
+  detail             TEXT NOT NULL DEFAULT '',
+  critical           BOOLEAN NOT NULL DEFAULT false,
+  source_case_id     TEXT NOT NULL,
+  created_at         TIMESTAMPTZ NOT NULL DEFAULT now(),
+  resolved_at        TIMESTAMPTZ,
+  resolved_by_case_id TEXT
+);
+
+CREATE INDEX IF NOT EXISTS rpos_miss_board_open_idx
+  ON rpos_miss_board (badge_id, resolved_at, critical DESC, created_at);

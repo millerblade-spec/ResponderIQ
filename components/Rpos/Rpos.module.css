@@ -1,6 +1,6 @@
 .wrap {
   width: 100%;
-  max-width: 900px;
+  max-width: 940px;
   margin: 0 auto;
 }
 
@@ -14,13 +14,20 @@
   color: var(--fg-muted);
   font-size: 0.9rem;
   margin-bottom: 1.25rem;
-  max-width: 62ch;
+  max-width: 66ch;
 }
 
 .sectionHeading {
   font-size: 1rem;
   font-weight: 800;
   margin: 1.5rem 0 0.6rem;
+}
+
+.sectionNote {
+  color: var(--fg-muted);
+  font-size: 0.85rem;
+  margin-bottom: 0.6rem;
+  max-width: 66ch;
 }
 
 .list {
@@ -60,13 +67,13 @@
   color: var(--fg-muted);
 }
 
-/* Program standing ------------------------------------------------------ */
+/* Standing header ------------------------------------------------------- */
 
 .standing {
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
-  gap: 0.75rem 1.5rem;
+  gap: 0.75rem 1.75rem;
   border: 1px solid var(--border);
   border-radius: 8px;
   padding: 1rem 1.25rem;
@@ -86,6 +93,19 @@
   font-weight: 800;
 }
 
+.callSign {
+  color: var(--status-caution);
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
+.levelQuestion {
+  border-left: 3px solid var(--accent);
+  padding-left: 0.9rem;
+  margin-bottom: 1rem;
+  font-style: italic;
+}
+
 .nextAction {
   border: 1px solid var(--border);
   border-radius: 8px;
@@ -93,107 +113,94 @@
   margin-bottom: 1rem;
 }
 
-.concerns {
+/* Streak ---------------------------------------------------------------- */
+
+.streak {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0.35rem 0 0.25rem;
+}
+
+.pip {
+  width: 1.6rem;
+  height: 0.5rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+}
+
+.pipEarned {
+  background: var(--status-info);
+  border-color: var(--status-info);
+}
+
+/* Blockers and hard stops ----------------------------------------------- */
+
+.blockers {
   border: 2px solid var(--status-critical);
   border-radius: 8px;
   padding: 0.85rem 1.1rem;
   margin-bottom: 1rem;
 }
 
-.concernsHeading {
+.blockersHeading {
   font-weight: 800;
-  margin-bottom: 0.35rem;
+  margin-bottom: 0.4rem;
 }
 
-.concernsList {
-  margin: 0;
-  padding-left: 1.1rem;
-}
-
-/* Stages ---------------------------------------------------------------- */
-
-.stage {
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 0.85rem 1.1rem;
-}
-
-.stageHead {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 1rem;
-}
-
-.stageTitle {
-  font-weight: 800;
-}
-
-.stagePurpose {
-  color: var(--fg-muted);
-  font-size: 0.85rem;
-  margin: 0.2rem 0 0.5rem;
-}
-
-.badge {
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  padding: 0.1rem 0.6rem;
-  font-size: 0.75rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  white-space: nowrap;
-}
-
-.requirements {
+.blockerList {
   list-style: none;
   display: flex;
   flex-direction: column;
-  gap: 0.3rem;
+  gap: 0.4rem;
 }
 
-.requirement {
-  display: flex;
-  gap: 0.5rem;
-  font-size: 0.9rem;
+.blockerSummary {
+  font-weight: 700;
 }
 
-.requirementMark {
-  font-weight: 800;
-  width: 1.1rem;
-  flex: none;
-}
-
-.requirementDetail {
+.blockerDetail {
   color: var(--fg-muted);
   font-size: 0.85rem;
 }
 
-/* Competencies ---------------------------------------------------------- */
+.eligible {
+  border: 2px solid var(--status-safe);
+  border-radius: 8px;
+  padding: 0.85rem 1.1rem;
+  margin-bottom: 1rem;
+}
 
-.competencyTable {
+.eligibleHeading {
+  font-weight: 800;
+  color: var(--status-safe);
+  margin-bottom: 0.35rem;
+}
+
+/* Tables ---------------------------------------------------------------- */
+
+.table {
   width: 100%;
   border-collapse: collapse;
   font-size: 0.9rem;
 }
 
-.competencyTable th,
-.competencyTable td {
+.table th,
+.table td {
   text-align: left;
   padding: 0.4rem 0.6rem;
   border-bottom: 1px solid var(--border);
+  vertical-align: top;
 }
 
-.competencyTable thead th {
+.table thead th {
   color: var(--fg-muted);
   font-size: 0.75rem;
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
 
-/* Row headers are competency names — readable case, normal weight scale. */
-.competencyTable tbody th {
+.table tbody th {
   font-weight: 700;
 }
 
@@ -202,7 +209,34 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* Enroll form ----------------------------------------------------------- */
+/* Bands. Color is never the only signal — the band name is always written. */
+
+.bandBlue {
+  color: var(--status-info);
+  font-weight: 800;
+}
+
+.bandGreen {
+  color: var(--status-safe);
+  font-weight: 800;
+}
+
+.bandYellow {
+  color: var(--status-pending);
+  font-weight: 800;
+}
+
+.bandRed {
+  color: var(--status-critical);
+  font-weight: 800;
+}
+
+.criticalFlag {
+  color: var(--status-critical);
+  font-weight: 800;
+}
+
+/* Forms ----------------------------------------------------------------- */
 
 .form {
   display: flex;
@@ -229,14 +263,15 @@
   letter-spacing: 0.04em;
 }
 
-.input {
+.input,
+.select {
   border: 1px solid var(--border);
   border-radius: 6px;
   padding: 0.45rem 0.6rem;
   background: transparent;
   color: inherit;
   font: inherit;
-  min-width: 12rem;
+  min-width: 11rem;
 }
 
 .button {
@@ -253,6 +288,13 @@
 .button:disabled {
   opacity: 0.6;
   cursor: default;
+}
+
+.advanceForm {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
 }
 
 .formMessage {
@@ -273,51 +315,6 @@
   margin-bottom: 0.75rem;
 }
 
-/* Level and status tints. Color is never the only signal — every one of
-   these is paired with its word ("proficient", "complete") in the markup,
-   per the operational color rules in globals.css. */
-.levelMastered {
-  color: var(--status-safe);
-  font-weight: 700;
-}
-
-.levelProficient {
-  color: var(--status-info);
-  font-weight: 700;
-}
-
-.levelDeveloping {
-  color: var(--status-caution);
-  font-weight: 700;
-}
-
-.levelNotStarted {
-  color: var(--fg-muted);
-  font-weight: 700;
-}
-
-.statusComplete {
-  border-color: var(--status-safe);
-  color: var(--status-safe);
-}
-
-.statusInProgress {
-  border-color: var(--status-pending);
-  color: var(--status-pending);
-}
-
-.statusAvailable {
-  border-color: var(--status-info);
-  color: var(--status-info);
-}
-
-.statusLocked {
-  border-color: var(--border);
-  color: var(--fg-muted);
-}
-
-/* Same visually-hidden rule as RonDebrief.module.css — kept local to the
-   module, since the project has no global utility layer. */
 .srOnly {
   position: absolute;
   width: 1px;

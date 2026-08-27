@@ -1,37 +1,113 @@
 import { makeRun } from '@/lib/review/operationalRun.fixture';
 import type { StoredOperationalRun } from '@/lib/db/operationalRuns';
 import type { OperationalRun } from '@/lib/review/operationalRun';
-import { buildLearnerEvidence } from './evidence';
-import type { LearnerEvidence } from './types';
+import type {
+  CaseRecord,
+  Certification,
+  HardStopResult,
+  LearnerEvidence,
+  LevelNumber,
+  MissBoardEntry,
+  MissCategory,
+  PersonalityMode,
+} from './types';
 
-/**
- * Test fixtures for the program. Built on the existing operational-run
- * fixture and put through the real evidence builder, so program tests
- * exercise the same scoring path production does rather than hand-written
- * category percentages that could drift from it.
- */
+/** Test fixtures for RPOS. Cases are built directly so band and streak rules can be exercised without a scenario. */
 
 let sequence = 0;
+const nextId = () => `case-${(sequence += 1).toString().padStart(4, '0')}`;
 
-/** A stored run wrapper around makeRun(). `createdAt` defaults to a stable, increasing timestamp. */
-export function makeStoredRun(
-  overrides: Partial<OperationalRun> = {},
-  meta: { readonly createdAt?: string; readonly attemptNumber?: number } = {},
-): StoredOperationalRun {
-  sequence += 1;
+/** A day-spaced timestamp, so "oldest first" ordering is unambiguous in tests. */
+export function at(dayOfMonth: number): string {
+  return new Date(Date.UTC(2026, 0, dayOfMonth)).toISOString();
+}
+
+export function makeCase(overrides: Partial<CaseRecord> = {}): CaseRecord {
   return {
-    evaluationId: `00000000-0000-4000-8000-${sequence.toString().padStart(12, '0')}`,
-    attemptNumber: meta.attemptNumber ?? sequence,
-    run: makeRun({ ...overrides, evaluationId: `00000000-0000-4000-8000-${sequence.toString().padStart(12, '0')}` }),
-    createdAt: meta.createdAt ?? new Date(Date.UTC(2026, 0, sequence)).toISOString(),
+    caseId: nextId(),
+    certification: 'paramedic',
+    level: 1,
+    score: 99,
+    band: 'blue',
+    criticalErrors: [],
+    hardStops: [
+      { id: 'max_bvm', title: 'Max BVM', required: false, passed: true, missedItems: [] },
+      { id: 'dsi', title: 'DSI', required: false, passed: true, missedItems: [] },
+    ],
+    misses: [],
+    challengeMode: false,
+    createdAt: at(1),
+    ...overrides,
   };
 }
 
-/**
- * A run that fails almost everything scoreable: no windshield assessment, no
- * assignments, unresolved distractions, no working impression, deterioration
- * without reassessment, slow and over the time benchmark.
- */
+/** N clean BLUE cases in order, one per day. */
+export function blueRun(count: number, overrides: Partial<CaseRecord> = {}): CaseRecord[] {
+  return Array.from({ length: count }, (_, index) => makeCase({ ...overrides, createdAt: at(index + 1) }));
+}
+
+export function failedHardStop(id: 'max_bvm' | 'dsi', missed: string[]): HardStopResult {
+  return {
+    id,
+    title: id === 'dsi' ? 'DSI' : 'Max BVM',
+    required: true,
+    passed: false,
+    missedItems: missed.map((label) => ({ id: label, label })),
+  };
+}
+
+export function makeMiss(overrides: Partial<MissBoardEntry> = {}): MissBoardEntry {
+  return {
+    id: `miss-${(sequence += 1).toString().padStart(4, '0')}`,
+    category: 'assessment' as MissCategory,
+    subject: 'Patient assessment',
+    detail: 'Core assessments incomplete.',
+    critical: false,
+    sourceCaseId: 'case-0001',
+    createdAt: at(1),
+    resolvedAt: null,
+    resolvedByCaseId: null,
+    ...overrides,
+  };
+}
+
+export interface EvidenceOptions {
+  readonly name?: string;
+  readonly badgeId?: string;
+  readonly certification?: Certification;
+  readonly level?: LevelNumber;
+  readonly personalityMode?: PersonalityMode;
+  readonly cases?: readonly CaseRecord[];
+  readonly missBoard?: readonly MissBoardEntry[];
+}
+
+export function makeEvidence(options: EvidenceOptions = {}): LearnerEvidence {
+  return {
+    learner: { name: options.name ?? 'Alex Medic', badgeId: options.badgeId ?? 'B-1234' },
+    certification: options.certification ?? 'paramedic',
+    level: options.level ?? 1,
+    personalityMode: options.personalityMode ?? 1,
+    cases: options.cases ?? [],
+    missBoard: options.missBoard ?? [],
+  };
+}
+
+/** A stored BLS-01 run, for the engine→case bridge tests. */
+export function makeStoredRun(
+  overrides: Partial<OperationalRun> = {},
+  meta: { readonly createdAt?: string } = {},
+): StoredOperationalRun {
+  sequence += 1;
+  const evaluationId = `00000000-0000-4000-8000-${sequence.toString().padStart(12, '0')}`;
+  return {
+    evaluationId,
+    attemptNumber: sequence,
+    run: makeRun({ ...overrides, evaluationId }),
+    createdAt: meta.createdAt ?? at(Math.min(28, sequence)),
+  };
+}
+
+/** A run that fails most of what BLS-01 scores, including scene safety. */
 export function makePoorRun(): Partial<OperationalRun> {
   return {
     sceneSafety: {
@@ -44,7 +120,9 @@ export function makePoorRun(): Partial<OperationalRun> {
     },
     crew: { assignments: [] },
     dynamics: {
-      issues: [{ id: 'family', type: 'family', maxStageReached: 3, resolved: false, recognized: false, firstActionAtSecond: null }],
+      issues: [
+        { id: 'family', type: 'family', maxStageReached: 3, resolved: false, recognized: false, firstActionAtSecond: null },
+      ],
     },
     differential: { initial: ['mechanical_fall'], revisions: [], workingImpression: null },
     clinical: {
@@ -67,23 +145,4 @@ export function makePoorRun(): Partial<OperationalRun> {
       timeToDispositionSeconds: null,
     },
   };
-}
-
-export interface EvidenceOptions {
-  readonly name?: string;
-  readonly badgeId?: string;
-  readonly hasCompletedTruckCheck?: boolean;
-  readonly truckCheckAttempts?: number;
-  readonly runs?: readonly StoredOperationalRun[];
-}
-
-export function makeEvidence(options: EvidenceOptions = {}): LearnerEvidence {
-  return buildLearnerEvidence({
-    learner: { name: options.name ?? 'Alex Medic', badgeId: options.badgeId ?? 'B-1234' },
-    truckCheck: {
-      hasCompletedTruckCheck: options.hasCompletedTruckCheck ?? true,
-      attemptCount: options.truckCheckAttempts ?? 1,
-    },
-    runs: options.runs ?? [],
-  });
 }
