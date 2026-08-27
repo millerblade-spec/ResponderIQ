@@ -1,9 +1,32 @@
 .bar {
   display: flex;
-  justify-content: flex-end;
+  justify-content: space-between;
   align-items: center;
   gap: 0.75rem;
   margin-bottom: 1rem;
+}
+
+.nav {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.navLink {
+  color: var(--fg-muted);
+  font-size: 0.85rem;
+  text-decoration: none;
+}
+
+.navLink:hover {
+  color: var(--fg);
+  text-decoration: underline;
+}
+
+.signOutForm {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
 }
 
 .signedInAs {

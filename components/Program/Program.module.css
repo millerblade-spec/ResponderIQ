@@ -1,0 +1,327 @@
+.wrap {
+  width: 100%;
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.heading {
+  font-size: 1.4rem;
+  font-weight: 800;
+  margin-bottom: 0.35rem;
+}
+
+.summary {
+  color: var(--fg-muted);
+  font-size: 0.9rem;
+  margin-bottom: 1.25rem;
+  max-width: 62ch;
+}
+
+.sectionHeading {
+  font-size: 1rem;
+  font-weight: 800;
+  margin: 1.5rem 0 0.6rem;
+}
+
+.list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.7rem 0.9rem;
+  text-decoration: none;
+  color: inherit;
+}
+
+.row:hover {
+  border-color: var(--fg-muted);
+}
+
+.rowMain {
+  font-weight: 700;
+}
+
+.rowMeta {
+  color: var(--fg-muted);
+  font-size: 0.85rem;
+}
+
+.empty,
+.error {
+  color: var(--fg-muted);
+}
+
+/* Program standing ------------------------------------------------------ */
+
+.standing {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.75rem 1.5rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 1rem 1.25rem;
+  margin-bottom: 1rem;
+}
+
+.standingLabel {
+  display: block;
+  color: var(--fg-muted);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 0.15rem;
+}
+
+.standingValue {
+  font-weight: 800;
+}
+
+.nextAction {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.85rem 1.1rem;
+  margin-bottom: 1rem;
+}
+
+.concerns {
+  border: 2px solid var(--status-critical);
+  border-radius: 8px;
+  padding: 0.85rem 1.1rem;
+  margin-bottom: 1rem;
+}
+
+.concernsHeading {
+  font-weight: 800;
+  margin-bottom: 0.35rem;
+}
+
+.concernsList {
+  margin: 0;
+  padding-left: 1.1rem;
+}
+
+/* Stages ---------------------------------------------------------------- */
+
+.stage {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.85rem 1.1rem;
+}
+
+.stageHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.stageTitle {
+  font-weight: 800;
+}
+
+.stagePurpose {
+  color: var(--fg-muted);
+  font-size: 0.85rem;
+  margin: 0.2rem 0 0.5rem;
+}
+
+.badge {
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 0.1rem 0.6rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+.requirements {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.requirement {
+  display: flex;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+}
+
+.requirementMark {
+  font-weight: 800;
+  width: 1.1rem;
+  flex: none;
+}
+
+.requirementDetail {
+  color: var(--fg-muted);
+  font-size: 0.85rem;
+}
+
+/* Competencies ---------------------------------------------------------- */
+
+.competencyTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.competencyTable th,
+.competencyTable td {
+  text-align: left;
+  padding: 0.4rem 0.6rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.competencyTable thead th {
+  color: var(--fg-muted);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* Row headers are competency names — readable case, normal weight scale. */
+.competencyTable tbody th {
+  font-weight: 700;
+}
+
+.numeric {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Enroll form ----------------------------------------------------------- */
+
+.form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.9rem 1.1rem;
+  margin-bottom: 1.25rem;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--fg-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.input {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.45rem 0.6rem;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  min-width: 12rem;
+}
+
+.button {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.5rem 0.9rem;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  background: transparent;
+  color: inherit;
+}
+
+.button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.formMessage {
+  flex-basis: 100%;
+  font-size: 0.85rem;
+}
+
+.formError {
+  flex-basis: 100%;
+  font-size: 0.85rem;
+  color: var(--status-critical);
+}
+
+.backLink {
+  display: inline-block;
+  color: var(--fg-muted);
+  font-size: 0.85rem;
+  margin-bottom: 0.75rem;
+}
+
+/* Level and status tints. Color is never the only signal — every one of
+   these is paired with its word ("proficient", "complete") in the markup,
+   per the operational color rules in globals.css. */
+.levelMastered {
+  color: var(--status-safe);
+  font-weight: 700;
+}
+
+.levelProficient {
+  color: var(--status-info);
+  font-weight: 700;
+}
+
+.levelDeveloping {
+  color: var(--status-caution);
+  font-weight: 700;
+}
+
+.levelNotStarted {
+  color: var(--fg-muted);
+  font-weight: 700;
+}
+
+.statusComplete {
+  border-color: var(--status-safe);
+  color: var(--status-safe);
+}
+
+.statusInProgress {
+  border-color: var(--status-pending);
+  color: var(--status-pending);
+}
+
+.statusAvailable {
+  border-color: var(--status-info);
+  color: var(--status-info);
+}
+
+.statusLocked {
+  border-color: var(--border);
+  color: var(--fg-muted);
+}
+
+/* Same visually-hidden rule as RonDebrief.module.css — kept local to the
+   module, since the project has no global utility layer. */
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+}

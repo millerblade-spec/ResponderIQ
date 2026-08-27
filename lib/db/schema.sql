@@ -85,3 +85,30 @@ CREATE INDEX IF NOT EXISTS operational_runs_learner_idx
 
 CREATE INDEX IF NOT EXISTS operational_runs_scenario_idx
   ON operational_runs (scenario_id, created_at DESC);
+
+-- RPOS program enrollments. The program itself (stages, requirements,
+-- competency thresholds) lives in code, not in the database -- it is a
+-- specification, versioned with the app, and storing it would let a stored
+-- copy drift from the one the scoring actually uses. What IS stored is the
+-- roster: which responders an agency has put on the program, so a training
+-- officer can enroll someone before their first run and still see them.
+--
+-- No program standing, stage status, or competency level is stored. All of it
+-- is derived at read time from truck_check_attempts and operational_runs
+-- (lib/rpos), for the same reason operational scores are never stored: nothing
+-- derived can go stale or leak.
+--
+-- badge_id is the join key to operational_runs.badge_id and
+-- truck_check_attempts.learner_id -- free text, like every other identity
+-- column here, because there is no learners table to reference.
+CREATE TABLE IF NOT EXISTS program_enrollments (
+  id           BIGSERIAL PRIMARY KEY,
+  program_id   TEXT NOT NULL,
+  learner_name TEXT NOT NULL,
+  badge_id     TEXT NOT NULL,
+  enrolled_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (program_id, badge_id)
+);
+
+CREATE INDEX IF NOT EXISTS program_enrollments_program_idx
+  ON program_enrollments (program_id, enrolled_at DESC);

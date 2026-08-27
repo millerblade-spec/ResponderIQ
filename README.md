@@ -27,6 +27,14 @@ needs — a minimal reusable engine rather than a general-purpose EMS model.
 Scenarios live in [`lib/scenarios`](lib/scenarios); UI lives in
 [`app`](app) and [`components`](components).
 
+Above the individual runs sits **RPOS — the Responder Performance Operating
+System** ([`lib/rpos`](lib/rpos)): a six-stage development program that turns a
+responder's recorded Truck Checks and completed runs into stage progress, a
+competency level per behavioral category, and the single next action they
+need. Stages unlock only on recorded evidence, nothing derived is stored, and
+a critical safety concern is never averaged away. See
+[`docs/RPOS-PROGRAM.md`](docs/RPOS-PROGRAM.md).
+
 ## Getting started
 
 1. **Install dependencies**
@@ -64,9 +72,10 @@ Scenarios live in [`lib/scenarios`](lib/scenarios); UI lives in
    ```bash
    npm run dev
    ```
-   Open [http://localhost:3000](http://localhost:3000). The admin review
-   area lives under `/admin/scenarios/bls-01`, gated by the account you
-   just created at `/admin/login`.
+   Open [http://localhost:3000](http://localhost:3000). The admin area is
+   gated by the account you just created at `/admin/login`: run review lives
+   under `/admin/runs` and `/admin/scenarios/bls-01`, and the RPOS program
+   roster under `/admin/program`.
 
 7. **Run tests:**
    ```bash
@@ -93,12 +102,13 @@ Scenarios live in [`lib/scenarios`](lib/scenarios); UI lives in
 ## Project layout
 
 ```
-app/            Next.js routes (home, dashboard, settings, scenarios, admin)
-components/     Reusable UI (Button, Card, SimulatorPlayer, AdminReview, AdminReviewList, LoginForm, Dashboard, Settings)
+app/            Next.js routes (home, dashboard, settings, scenarios, admin, admin program)
+components/     Reusable UI (Button, Card, SimulatorPlayer, AdminReview, AdminReviewList, Program, LoginForm, Dashboard, Settings)
 lib/engine/     Simulation engine — clock, reducer, scoring, debrief
+lib/rpos/       RPOS program — stages, competency rollup, progression
 lib/scenarios/  Scenario definitions (BLS-01)
 lib/auth/       Password hashing, signed sessions, the DAL session check
-lib/db/         Postgres connection, schema, admin_users and review_records data access
+lib/db/         Postgres connection, schema, admin_users, review_records, runs and program roster data access
 lib/review/     Save-request validation (zod) and the save Server Action
 scripts/        One-off CLI scripts (db:migrate, db:seed-admin)
 docs/           Design notes and archived specs

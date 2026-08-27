@@ -114,3 +114,54 @@ export async function listLearnerAttempts(badgeId: string, scenarioId: string): 
   );
   return rows.map((r) => ({ evaluationId: r.evaluation_id, attemptNumber: Number(r.attempt_number), run: r.payload, createdAt: r.created_at }));
 }
+
+/**
+ * Every recorded run for a learner, oldest first, across all scenarios.
+ *
+ * listLearnerAttempts() above is deliberately scenario-scoped: attempt numbers
+ * and progress on one scenario are only meaningful within it. The RPOS program
+ * asks a different question — how has this responder performed, period — so it
+ * reads every run. Today that is the same set of rows (there is one scenario);
+ * the difference matters the moment a second one exists.
+ */
+export async function listAllLearnerRuns(badgeId: string): Promise<readonly StoredOperationalRun[]> {
+  const { rows } = await query<RunRow>(
+    `SELECT evaluation_id, attempt_number, payload, created_at
+     FROM operational_runs WHERE badge_id = $1 ORDER BY created_at ASC`,
+    [badgeId],
+  );
+  return rows.map((r) => ({
+    evaluationId: r.evaluation_id,
+    attemptNumber: Number(r.attempt_number),
+    run: r.payload,
+    createdAt: r.created_at,
+  }));
+}
+
+/**
+ * The same runs for many learners in one query, keyed by badge id — the RPOS
+ * roster evaluates every enrolled responder on one page load, and per-learner
+ * queries would scale with the roster. Badges with no runs come back with an
+ * empty array rather than a missing key.
+ */
+export async function listRunsForBadges(
+  badgeIds: readonly string[],
+): Promise<ReadonlyMap<string, readonly StoredOperationalRun[]>> {
+  const byBadge = new Map<string, StoredOperationalRun[]>(badgeIds.map((badgeId) => [badgeId, []]));
+  if (badgeIds.length === 0) return byBadge;
+
+  const { rows } = await query<RunRow & { badge_id: string }>(
+    `SELECT evaluation_id, attempt_number, payload, created_at, badge_id
+     FROM operational_runs WHERE badge_id = ANY($1) ORDER BY created_at ASC`,
+    [badgeIds as string[]],
+  );
+  for (const row of rows) {
+    byBadge.get(row.badge_id)?.push({
+      evaluationId: row.evaluation_id,
+      attemptNumber: Number(row.attempt_number),
+      run: row.payload,
+      createdAt: row.created_at,
+    });
+  }
+  return byBadge;
+}
