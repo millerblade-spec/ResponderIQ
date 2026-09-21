@@ -4,6 +4,7 @@ import {
   recordTruckCheckAttempt,
   getTruckCheckStatus,
   listFrequentlyMissedSubjects,
+  getTruckCheckStatusForLearners,
 } from './truckCheckAttempts';
 
 const TEST_DATABASE_URL =
@@ -83,6 +84,34 @@ describe('truck_check_attempts (integration, real database)', () => {
     const trauma = missed.find((m) => m.subject === 'trauma_bag');
     expect(trauma?.count).toBe(2);
     expect(missed.find((m) => m.subject === 'narcotics')?.count).toBe(1);
+  });
+
+  it('batches Truck Check status for many learners, including ones with no attempts', async () => {
+    await recordTruckCheckAttempt({
+      learnerId: 'L-batch-1',
+      scenarioId: 'bls-01',
+      outcome: 'truck_check',
+      mandatory: true,
+      forcedCheck: false,
+    });
+    await recordTruckCheckAttempt({
+      learnerId: 'L-batch-2',
+      scenarioId: 'bls-01',
+      outcome: 'quiz',
+      mandatory: false,
+      forcedCheck: false,
+      quiz: { correct: 5, total: 5, passed: true, questionIds: [], answers: {}, missedSubjects: [] },
+    });
+
+    const statuses = await getTruckCheckStatusForLearners(['L-batch-1', 'L-batch-2', 'L-batch-none']);
+    expect(statuses.get('L-batch-1')).toEqual({ hasCompletedTruckCheck: true, attemptCount: 1 });
+    // A quiz attempt is an attempt, but it is not a completed Truck Check.
+    expect(statuses.get('L-batch-2')).toEqual({ hasCompletedTruckCheck: false, attemptCount: 1 });
+    expect(statuses.get('L-batch-none')).toEqual({ hasCompletedTruckCheck: false, attemptCount: 0 });
+  });
+
+  it('returns an empty batch without querying for an empty learner list', async () => {
+    expect(await getTruckCheckStatusForLearners([])).toEqual(new Map());
   });
 
   it('keeps learners separate', async () => {

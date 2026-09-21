@@ -1,0 +1,324 @@
+.wrap {
+  width: 100%;
+  max-width: 940px;
+  margin: 0 auto;
+}
+
+.heading {
+  font-size: 1.4rem;
+  font-weight: 800;
+  margin-bottom: 0.35rem;
+}
+
+.summary {
+  color: var(--fg-muted);
+  font-size: 0.9rem;
+  margin-bottom: 1.25rem;
+  max-width: 66ch;
+}
+
+.sectionHeading {
+  font-size: 1rem;
+  font-weight: 800;
+  margin: 1.5rem 0 0.6rem;
+}
+
+.sectionNote {
+  color: var(--fg-muted);
+  font-size: 0.85rem;
+  margin-bottom: 0.6rem;
+  max-width: 66ch;
+}
+
+.list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.7rem 0.9rem;
+  text-decoration: none;
+  color: inherit;
+}
+
+.row:hover {
+  border-color: var(--fg-muted);
+}
+
+.rowMain {
+  font-weight: 700;
+}
+
+.rowMeta {
+  color: var(--fg-muted);
+  font-size: 0.85rem;
+}
+
+.empty,
+.error {
+  color: var(--fg-muted);
+}
+
+/* Standing header ------------------------------------------------------- */
+
+.standing {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.75rem 1.75rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 1rem 1.25rem;
+  margin-bottom: 1rem;
+}
+
+.standingLabel {
+  display: block;
+  color: var(--fg-muted);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 0.15rem;
+}
+
+.standingValue {
+  font-weight: 800;
+}
+
+.callSign {
+  color: var(--status-caution);
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
+.levelQuestion {
+  border-left: 3px solid var(--accent);
+  padding-left: 0.9rem;
+  margin-bottom: 1rem;
+  font-style: italic;
+}
+
+.nextAction {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.85rem 1.1rem;
+  margin-bottom: 1rem;
+}
+
+/* Streak ---------------------------------------------------------------- */
+
+.streak {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0.35rem 0 0.25rem;
+}
+
+.pip {
+  width: 1.6rem;
+  height: 0.5rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+}
+
+.pipEarned {
+  background: var(--status-info);
+  border-color: var(--status-info);
+}
+
+/* Blockers and hard stops ----------------------------------------------- */
+
+.blockers {
+  border: 2px solid var(--status-critical);
+  border-radius: 8px;
+  padding: 0.85rem 1.1rem;
+  margin-bottom: 1rem;
+}
+
+.blockersHeading {
+  font-weight: 800;
+  margin-bottom: 0.4rem;
+}
+
+.blockerList {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.blockerSummary {
+  font-weight: 700;
+}
+
+.blockerDetail {
+  color: var(--fg-muted);
+  font-size: 0.85rem;
+}
+
+.eligible {
+  border: 2px solid var(--status-safe);
+  border-radius: 8px;
+  padding: 0.85rem 1.1rem;
+  margin-bottom: 1rem;
+}
+
+.eligibleHeading {
+  font-weight: 800;
+  color: var(--status-safe);
+  margin-bottom: 0.35rem;
+}
+
+/* Tables ---------------------------------------------------------------- */
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.table th,
+.table td {
+  text-align: left;
+  padding: 0.4rem 0.6rem;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+}
+
+.table thead th {
+  color: var(--fg-muted);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.table tbody th {
+  font-weight: 700;
+}
+
+.numeric {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Bands. Color is never the only signal — the band name is always written. */
+
+.bandBlue {
+  color: var(--status-info);
+  font-weight: 800;
+}
+
+.bandGreen {
+  color: var(--status-safe);
+  font-weight: 800;
+}
+
+.bandYellow {
+  color: var(--status-pending);
+  font-weight: 800;
+}
+
+.bandRed {
+  color: var(--status-critical);
+  font-weight: 800;
+}
+
+.criticalFlag {
+  color: var(--status-critical);
+  font-weight: 800;
+}
+
+/* Forms ----------------------------------------------------------------- */
+
+.form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.9rem 1.1rem;
+  margin-bottom: 1.25rem;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--fg-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.input,
+.select {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.45rem 0.6rem;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  min-width: 11rem;
+}
+
+.button {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.5rem 0.9rem;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  background: transparent;
+  color: inherit;
+}
+
+.button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.advanceForm {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.formMessage {
+  flex-basis: 100%;
+  font-size: 0.85rem;
+}
+
+.formError {
+  flex-basis: 100%;
+  font-size: 0.85rem;
+  color: var(--status-critical);
+}
+
+.backLink {
+  display: inline-block;
+  color: var(--fg-muted);
+  font-size: 0.85rem;
+  margin-bottom: 0.75rem;
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+}

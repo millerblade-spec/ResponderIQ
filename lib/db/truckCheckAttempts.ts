@@ -95,3 +95,36 @@ export async function listFrequentlyMissedSubjects(
   );
   return rows.map((r) => ({ subject: r.subject, count: Number(r.count) }));
 }
+
+/**
+ * Truck Check status for many learners in one query — the RPOS roster needs it
+ * for every responder on the program, and one query per learner would turn a
+ * 25-row roster into 25 round trips. Learners with no attempts are present in
+ * the result with a zeroed status, so callers never have to special-case a
+ * missing key.
+ */
+export async function getTruckCheckStatusForLearners(
+  learnerIds: readonly string[],
+): Promise<ReadonlyMap<string, TruckCheckStatus>> {
+  const statuses = new Map<string, TruckCheckStatus>(
+    learnerIds.map((id) => [id, { hasCompletedTruckCheck: false, attemptCount: 0 }]),
+  );
+  if (learnerIds.length === 0) return statuses;
+
+  const { rows } = await query<{ learner_id: string; total: string; completed_checks: string }>(
+    `SELECT learner_id,
+            count(*) AS total,
+            count(*) FILTER (WHERE outcome = 'truck_check') AS completed_checks
+     FROM truck_check_attempts
+     WHERE learner_id = ANY($1)
+     GROUP BY learner_id`,
+    [learnerIds as string[]],
+  );
+  for (const row of rows) {
+    statuses.set(row.learner_id, {
+      hasCompletedTruckCheck: Number(row.completed_checks) > 0,
+      attemptCount: Number(row.total),
+    });
+  }
+  return statuses;
+}

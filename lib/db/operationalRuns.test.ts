@@ -5,6 +5,8 @@ import {
   getOperationalRun,
   listOperationalRuns,
   listLearnerAttempts,
+  listAllLearnerRuns,
+  listRunsForBadges,
 } from './operationalRuns';
 import { getReviewRecord } from './reviewRecords';
 import { makeRun } from '@/lib/review/operationalRun.fixture';
@@ -68,6 +70,36 @@ describe('operational_runs (integration, real database)', () => {
     await saveOperationalRun(makeRun({ evaluationId: uuid(), learner: { name: 'A', badgeId: 'B-A' } }));
     const other = await saveOperationalRun(makeRun({ evaluationId: uuid(), learner: { name: 'B', badgeId: 'B-B' } }));
     expect(other.attemptNumber).toBe(1); // different badge -> fresh count
+  });
+
+  it('reads every run for a learner across scenarios, oldest first', async () => {
+    const first = makeRun({ evaluationId: uuid() });
+    const otherScenario = makeRun({ evaluationId: uuid(), scenarioId: 'bls-02' });
+    await saveOperationalRun(first);
+    await saveOperationalRun(otherScenario);
+    const all = await listAllLearnerRuns(first.learner.badgeId);
+    expect(all.map((r) => r.evaluationId)).toEqual([first.evaluationId, otherScenario.evaluationId]);
+    // The scenario-scoped read still sees only its own scenario.
+    expect(await listLearnerAttempts(first.learner.badgeId, 'bls-01')).toHaveLength(1);
+  });
+
+  it('batches runs for many badges into one result keyed by badge', async () => {
+    const a = makeRun({ evaluationId: uuid(), learner: { name: 'A', badgeId: 'B-A' } });
+    const b1 = makeRun({ evaluationId: uuid(), learner: { name: 'B', badgeId: 'B-B' } });
+    const b2 = makeRun({ evaluationId: uuid(), learner: { name: 'B', badgeId: 'B-B' } });
+    await saveOperationalRun(a);
+    await saveOperationalRun(b1);
+    await saveOperationalRun(b2);
+
+    const byBadge = await listRunsForBadges(['B-A', 'B-B', 'B-nobody']);
+    expect(byBadge.get('B-A')?.map((r) => r.evaluationId)).toEqual([a.evaluationId]);
+    expect(byBadge.get('B-B')?.map((r) => r.evaluationId)).toEqual([b1.evaluationId, b2.evaluationId]);
+    // A badge with no runs is present and empty, not missing.
+    expect(byBadge.get('B-nobody')).toEqual([]);
+  });
+
+  it('returns an empty batch without querying for an empty badge list', async () => {
+    expect(await listRunsForBadges([])).toEqual(new Map());
   });
 
   it('leaves legacy review_records readable (no second persistence path)', async () => {
